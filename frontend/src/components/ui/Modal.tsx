@@ -1,0 +1,8 @@
+'use client'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { X } from 'lucide-react'
+export function Modal({ title, children, onClose }: { title?: string; children: ReactNode; onClose: () => void }) {
+  const modalRef = useRef<HTMLElement>(null)
+  useEffect(() => { const listener = (event: KeyboardEvent) => { if (event.key === 'Escape') { onClose(); return } if (event.key !== 'Tab' || !modalRef.current) return; const focusable = Array.from(modalRef.current.querySelectorAll<HTMLElement>('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(element => !element.hasAttribute('disabled')); if (!focusable.length) return; const first = focusable[0]; const last = focusable[focusable.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() } }; document.addEventListener('keydown', listener); window.setTimeout(() => modalRef.current?.querySelector<HTMLElement>('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])')?.focus(), 0); return () => document.removeEventListener('keydown', listener) }, [onClose])
+  return <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}><section ref={modalRef} className="modal" role="dialog" aria-modal="true" aria-labelledby={title ? 'modal-title' : undefined} aria-label={title ? undefined : 'File viewer'}>{title && <div className="modal-head"><h2 id="modal-title">{title}</h2><button className="icon-button" onClick={onClose} aria-label="Close dialog"><X size={18} /></button></div>}{children}</section></div>
+}

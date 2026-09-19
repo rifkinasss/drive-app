@@ -1,0 +1,31 @@
+<?php
+
+return [
+    'invitation_ttl_hours' => (int) env('USER_INVITATION_TTL_HOURS', 72),
+    'verification_ttl_hours' => (int) env('EMAIL_VERIFICATION_TTL_HOURS', 24),
+    'disk' => env('CLOUD_STORAGE_DISK', 'cloud'),
+    'default_user_quota_bytes' => (int) env('CLOUD_DEFAULT_USER_QUOTA_BYTES', 26_843_545_600),
+    'max_upload_size_bytes' => (int) env('CLOUD_MAX_UPLOAD_SIZE_BYTES', 524_288_000),
+    'blocked_extensions' => ['php', 'phtml', 'phar', 'cgi', 'pl', 'py', 'sh', 'bash', 'exe', 'dll', 'com', 'bat', 'cmd'],
+    'previewable_mime_types' => [
+        'application/json',
+        'application/pdf',
+        'audio/mpeg',
+        'audio/ogg',
+        'audio/wav',
+        'image/gif',
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'text/css',
+        'text/csv',
+        'text/javascript',
+        'text/markdown',
+        'text/plain',
+        'text/xml',
+        'video/mp4',
+        'video/webm',
+    ],
+    'invitation_url_path' => 'invite',
+    'verification_url_path' => 'verify-email',
+];

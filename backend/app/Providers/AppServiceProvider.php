@@ -41,7 +41,7 @@ class AppServiceProvider extends ServiceProvider
                 'description' => 'Backend powering Drive by NasLabs.',
             ],
             'ui' => ['title' => 'Drive by NasLabs API'],
-            'servers' => ['Drive by NasLabs API' => rtrim((string) config('app.url'), '/')],
+            'servers' => null,
             'renderer' => 'elements',
             'renderers' => ['elements' => ['view' => 'scramble::docs', 'tryItCredentialsPolicy' => 'include']],
             'middleware' => ['web'],

@@ -7,6 +7,7 @@ import { SystemStateContent } from '@/components/system/SystemState'
 import { useAuthStore } from '@/stores/auth-store'
 import { ApiError } from '@/lib/api/client'
 import { authApi } from '@/features/auth/api/auth.api'
+import { getSafeReturnTo } from '@/lib/auth-redirect'
 
 export function LoginPageClient() {
   const router = useRouter()
@@ -18,13 +19,14 @@ export function LoginPageClient() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const maintenance = searchParams.get('maintenance') === '1'
+  const returnTo = getSafeReturnTo(searchParams.get('returnTo')) ?? '/home'
 
   const signIn = () => {
     setLoading(true)
     void auth.login(email, password, rememberMe).then((user) => {
       if (maintenance && user?.role !== 'admin') router.push('/maintenance')
       else if (user?.status === 'disabled') router.push('/account-disabled')
-      else router.push('/home')
+      else router.replace(returnTo)
     }).catch((reason: unknown) => { setError(reason instanceof Error ? reason.message : 'Invalid email or password.'); setLoading(false) })
   }
 

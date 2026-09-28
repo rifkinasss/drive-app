@@ -1,21 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { ApiError, csrfCookie } from "@/lib/api/client";
+import { ApiError, AUTH_SESSION_INVALIDATED_EVENT, csrfCookie } from "@/lib/api/client";
 import { authApi } from "@/features/auth/api/auth.api";
 import type { CloudUser } from "@/types/user";
 
 let currentUserId = "";
 let currentUser: CloudUser | null = null;
 let loading = true;
+let authInitialized = false;
 let sessionError: ApiError | null = null;
+let refreshRequest: Promise<CloudUser | null> | null = null;
+let lifecycleListenersAttached = false;
 const listeners = new Set<() => void>();
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
 };
-const getSnapshot = () => currentUserId;
-const getServerSnapshot = () => "";
+const getSnapshot = () => currentUserId || (authInitialized ? "__unauthenticated__" : "__loading__");
+const getServerSnapshot = () => "__loading__";
 function mapUser(user: Partial<CloudUser> & { id: string | number }): CloudUser {
   const now = new Date().toISOString();
   return {
@@ -26,13 +29,9 @@ function mapUser(user: Partial<CloudUser> & { id: string | number }): CloudUser 
     preferences: user.preferences ?? { theme: "system", defaultView: "grid", density: "comfortable", showFileExtensions: true, confirmPermanentDelete: true, defaultSort: "name", uploadConflict: "ask" },
   };
 }
-export function useAuthStore() {
-  const userId = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
-  );
-  const refreshUser = useCallback(async () => {
+async function refreshAuthSession(): Promise<CloudUser | null> {
+  if (refreshRequest) return refreshRequest;
+  refreshRequest = (async () => {
     sessionError = null;
     try {
       const response = await authApi.getCurrentUser();
@@ -41,21 +40,61 @@ export function useAuthStore() {
     } catch (reason) {
       currentUser = null;
       currentUserId = "";
-      if (reason instanceof ApiError) sessionError = reason;
-      else sessionError = new ApiError({ status: 0, message: "Unable to connect to Drive. Check your connection and try again." });
+      if (reason instanceof ApiError && reason.status !== 401) {
+        sessionError = reason;
+      } else if (!(reason instanceof ApiError)) {
+        sessionError = new ApiError({ status: 0, message: "Unable to connect to Drive. Check your connection and try again." });
+      }
     } finally {
+      authInitialized = true;
       loading = false;
       listeners.forEach((listener) => listener());
     }
     return currentUser;
-  }, []);
-  useEffect(() => { if (loading) void refreshUser(); }, [refreshUser]);
+  })();
+  try {
+    return await refreshRequest;
+  } finally {
+    refreshRequest = null;
+  }
+}
+
+function clearAuthenticatedSession(): void {
+  currentUser = null;
+  currentUserId = "";
+  sessionError = null;
+  loading = false;
+  authInitialized = true;
+  listeners.forEach((listener) => listener());
+}
+
+function attachAuthLifecycleListeners(): void {
+  if (lifecycleListenersAttached || typeof window === "undefined") return;
+  lifecycleListenersAttached = true;
+  window.addEventListener(AUTH_SESSION_INVALIDATED_EVENT, () => {
+    if (currentUserId || currentUser) clearAuthenticatedSession();
+  });
+  window.addEventListener("focus", () => {
+    if (authInitialized && currentUserId && !refreshRequest) void refreshAuthSession();
+  });
+}
+
+export function useAuthStore() {
+  useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
+  const refreshUser = useCallback(() => refreshAuthSession(), []);
+  useEffect(() => { attachAuthLifecycleListeners(); }, []);
+  useEffect(() => { if (!authInitialized) void refreshUser(); }, [refreshUser]);
   return {
-    currentUserId: userId,
+    currentUserId,
     currentUser,
     loading,
+    authInitialized,
     sessionError,
-    isAuthenticated: Boolean(userId),
+    isAuthenticated: Boolean(currentUserId),
     refreshUser,
     login: async (email: string, password: string, remember = false) => {
       await csrfCookie();
@@ -66,10 +105,7 @@ export function useAuthStore() {
     },
     logout: async () => {
       try { await authApi.logout(); } finally {
-      currentUserId = "";
-      currentUser = null;
-      loading = false;
-      listeners.forEach((listener) => listener());
+      clearAuthenticatedSession();
       }
     },
   };

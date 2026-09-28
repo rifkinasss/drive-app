@@ -241,4 +241,7 @@ document at `/docs/api.json`.
 Set `API_DOCS_ENABLED=false` to disable all documentation surfaces. The
 documentation describes the existing Laravel Sanctum cookie/session flow;
 browser clients must include credentials and initialize `/sanctum/csrf-cookie`
-before login.
+before login. Scramble Try It includes credentials for supported requests, but
+interactive authentication still requires obtaining the Sanctum CSRF cookie
+first in the same browser session, then sending `POST /api/auth/login` before
+testing `GET /api/auth/user`.

@@ -3,6 +3,8 @@ import { ApiError } from "@/lib/api/api-error";
 
 export { ApiError } from "@/lib/api/api-error";
 
+export const AUTH_SESSION_INVALIDATED_EVENT = "drive:auth-session-invalidated";
+
 const apiUrl = env.apiUrl
   .replace(/\/+$/, "")
   .replace(/\/api$/i, "");
@@ -16,6 +18,24 @@ function networkError(): ApiError {
     message:
       "No internet connection. Drive by NasLabs requires an internet connection to access your files.",
   });
+}
+
+function shouldInvalidateSession(path: string): boolean {
+  const normalizedPath = path.split("?", 1)[0];
+  if (!normalizedPath.startsWith("/api/")) return false;
+  return ![
+    "/api/public/",
+    "/api/invitations/",
+    "/api/email-verification/",
+    "/api/auth/login",
+    "/api/auth/forgot-password",
+    "/api/auth/reset-password",
+  ].some((prefix) => normalizedPath.startsWith(prefix));
+}
+
+function notifySessionInvalidated(path: string, status: number): void {
+  if (status !== 401 || !shouldInvalidateSession(path) || typeof window === "undefined") return;
+  window.dispatchEvent(new Event(AUTH_SESSION_INVALIDATED_EVENT));
 }
 
 function readCookie(name: string): string | undefined {
@@ -119,6 +139,7 @@ export async function apiFetch<T>(
     ) as T;
   }
   const error = await parseError(response);
+  notifySessionInvalidated(path, error.status);
   const isLoginRequest = path.replace(/\/+$/, "") === "/api/auth/login";
   if (retryCsrf && error.status === 419 && isLoginRequest) {
     csrfReady = false;
@@ -149,7 +170,11 @@ export async function apiBlob(
   } catch {
     throw networkError();
   }
-  if (!response.ok) throw await parseError(response);
+  if (!response.ok) {
+    const error = await parseError(response);
+    if (!isPublic) notifySessionInvalidated(path, error.status);
+    throw error;
+  }
   return response.blob();
 }
 

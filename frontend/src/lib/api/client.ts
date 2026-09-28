@@ -11,13 +11,24 @@ const apiUrl = env.apiUrl
 let csrfReady = false;
 let csrfRequest: Promise<void> | null = null;
 
+function notifyNetwork(eventName: "drive:network-failure" | "drive:network-recovered"): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(eventName));
+}
+
+
 function networkError(): ApiError {
+  notifyNetwork("drive:network-failure");
   return new ApiError({
     status: 0,
     code: "NETWORK_UNAVAILABLE",
     message:
       "No internet connection. Drive by NasLabs requires an internet connection to access your files.",
   });
+}
+
+function networkResponse(response: Response): Response {
+  notifyNetwork("drive:network-recovered");
+  return response;
 }
 
 function shouldInvalidateSession(path: string): boolean {
@@ -51,10 +62,10 @@ export async function csrfCookie(): Promise<void> {
   csrfRequest = (async () => {
     let response: Response;
     try {
-      response = await fetch(`${apiUrl}/sanctum/csrf-cookie`, {
+      response = networkResponse(await fetch(`${apiUrl}/sanctum/csrf-cookie`, {
         credentials: "include",
         headers: { Accept: "application/json" },
-      });
+      }));
     } catch {
       throw networkError();
     }
@@ -122,10 +133,10 @@ export async function apiFetch<T>(
   if (token) headers.set("X-XSRF-TOKEN", token);
   let response: Response;
   try {
-    response = await fetch(
+    response = networkResponse(await fetch(
       `${apiUrl}${path.startsWith("/") ? path : `/${path}`}`,
       { ...init, headers, credentials: "include" },
-    );
+    ));
   } catch {
     throw networkError();
   }
@@ -156,7 +167,7 @@ export async function apiBlob(
 ): Promise<Blob> {
   let response: Response;
   try {
-    response = await fetch(
+    response = networkResponse(await fetch(
       `${apiUrl}${path.startsWith("/") ? path : `/${path}`}`,
       {
         credentials: isPublic ? "omit" : "include",
@@ -166,7 +177,7 @@ export async function apiBlob(
           ...extraHeaders,
         },
       },
-    );
+    ));
   } catch {
     throw networkError();
   }

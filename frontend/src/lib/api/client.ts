@@ -10,14 +10,19 @@ const apiUrl = env.apiUrl
   .replace(/\/api$/i, "");
 let csrfReady = false;
 let csrfRequest: Promise<void> | null = null;
+let networkRequestId = 0;
 
-function notifyNetwork(eventName: "drive:network-failure" | "drive:network-recovered"): void {
-  if (typeof window !== "undefined") window.dispatchEvent(new Event(eventName));
+function nextNetworkRequestId(): number {
+  networkRequestId += 1;
+  return networkRequestId;
 }
 
+function notifyNetwork(eventName: "drive:network-failure" | "drive:network-recovered", requestId: number): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(eventName, { detail: { requestId } }));
+}
 
-function networkError(): ApiError {
-  notifyNetwork("drive:network-failure");
+function networkError(requestId: number): ApiError {
+  notifyNetwork("drive:network-failure", requestId);
   return new ApiError({
     status: 0,
     code: "NETWORK_UNAVAILABLE",
@@ -26,8 +31,8 @@ function networkError(): ApiError {
   });
 }
 
-function networkResponse(response: Response): Response {
-  notifyNetwork("drive:network-recovered");
+function networkResponse(response: Response, requestId: number): Response {
+  notifyNetwork("drive:network-recovered", requestId);
   return response;
 }
 
@@ -60,14 +65,15 @@ function readCookie(name: string): string | undefined {
 export async function csrfCookie(): Promise<void> {
   if (csrfRequest) return csrfRequest;
   csrfRequest = (async () => {
+    const requestId = nextNetworkRequestId();
     let response: Response;
     try {
       response = networkResponse(await fetch(`${apiUrl}/sanctum/csrf-cookie`, {
         credentials: "include",
         headers: { Accept: "application/json" },
-      }));
+      }), requestId);
     } catch {
-      throw networkError();
+      throw networkError(requestId);
     }
     if (!response.ok)
       throw new ApiError({
@@ -132,13 +138,14 @@ export async function apiFetch<T>(
   const token = readCookie("XSRF-TOKEN");
   if (token) headers.set("X-XSRF-TOKEN", token);
   let response: Response;
+  const requestId = nextNetworkRequestId();
   try {
     response = networkResponse(await fetch(
       `${apiUrl}${path.startsWith("/") ? path : `/${path}`}`,
       { ...init, headers, credentials: "include" },
-    ));
+    ), requestId);
   } catch {
-    throw networkError();
+    throw networkError(requestId);
   }
   if (response.ok) {
     if (response.status === 204) return undefined as T;
@@ -166,6 +173,7 @@ export async function apiBlob(
   extraHeaders?: HeadersInit,
 ): Promise<Blob> {
   let response: Response;
+  const requestId = nextNetworkRequestId();
   try {
     response = networkResponse(await fetch(
       `${apiUrl}${path.startsWith("/") ? path : `/${path}`}`,
@@ -177,9 +185,9 @@ export async function apiBlob(
           ...extraHeaders,
         },
       },
-    ));
+    ), requestId);
   } catch {
-    throw networkError();
+    throw networkError(requestId);
   }
   if (!response.ok) {
     const error = await parseError(response);

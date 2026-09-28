@@ -8,6 +8,7 @@ export function NetworkStatus() {
 
   useEffect(() => {
     let recoveryTimer: number | undefined
+    let latestRequestId = 0
 
     const markOnline = (showRecovery = true) => {
       setOnline(previous => {
@@ -24,8 +25,14 @@ export function NetworkStatus() {
       window.dispatchEvent(new Event('drive:online'))
     }
     const handleBrowserOffline = () => setOnline(false)
-    const handleNetworkFailure = () => setOnline(false)
-    const handleNetworkRecovered = () => { if (navigator.onLine) markOnline(true) }
+    const acceptNetworkEvent = (event: Event) => {
+      const requestId = event instanceof CustomEvent ? Number(event.detail?.requestId) : 0
+      if (requestId > 0 && requestId < latestRequestId) return false
+      if (requestId > 0) latestRequestId = requestId
+      return true
+    }
+    const handleNetworkFailure = (event: Event) => { if (acceptNetworkEvent(event)) setOnline(false) }
+    const handleNetworkRecovered = (event: Event) => { if (acceptNetworkEvent(event)) markOnline(true) }
     const handleManualOnline = () => markOnline(false)
 
     window.addEventListener('online', handleBrowserOnline)

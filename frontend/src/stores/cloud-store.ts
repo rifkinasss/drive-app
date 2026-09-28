@@ -2,6 +2,7 @@
 
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useThemePreference } from "@/stores/theme-store";
+import { percentageOf } from "@/lib/format";
 import { filesApi as cloudService } from "@/features/files/api/files.api";
 import { useAuthStore } from "@/stores/auth-store";
 import type { CloudActivity, CloudItem, StorageApiSummary, UploadTask } from "@/types/cloud";
@@ -80,7 +81,7 @@ function useCloudStoreValue() {
   }, [refresh]);
 
   const activeItems = items;
-  const storage = useMemo(() => ({ total: storageSummary?.quotaBytes ?? 0, used: storageSummary?.usedBytes ?? 0, available: storageSummary?.availableBytes ?? 0, trash: storageSummary?.trashBytes ?? 0, percentage: storageSummary?.usagePercentage ?? 0, categories: storageSummary?.categories ?? {}, largestFiles: storageSummary?.largestFiles ?? [] }), [storageSummary]);
+  const storage = useMemo(() => { const total = Number(storageSummary?.quotaBytes ?? 0); const used = Number(storageSummary?.usedBytes ?? 0); return { total, used, available: Number(storageSummary?.availableBytes ?? 0), trash: Number(storageSummary?.trashBytes ?? 0), percentage: percentageOf(used, total), categories: storageSummary?.categories ?? {}, largestFiles: storageSummary?.largestFiles ?? [] }; }, [storageSummary]);
 
   const toggleStar = useCallback((id: string) => {
     const item = [...items, ...recentItems, ...starredItems].find((entry) => entry.id === id);

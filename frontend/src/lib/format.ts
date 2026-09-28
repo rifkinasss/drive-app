@@ -1,11 +1,18 @@
 export function formatBytes(bytes: number): string {
-  if (!bytes) return "—";
+  const numericBytes = Number(bytes);
+  if (!Number.isFinite(numericBytes) || numericBytes <= 0) return "—";
   const units = ["B", "KB", "MB", "GB", "TB"];
   const index = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(1024)),
+    Math.floor(Math.log(numericBytes) / Math.log(1024)),
     units.length - 1,
   );
-  return `${(bytes / 1024 ** index).toFixed(index > 1 ? 1 : 0)} ${units[index]}`;
+  return `${(numericBytes / 1024 ** index).toFixed(index > 1 ? 1 : 0)} ${units[index]}`;
+}
+export function percentageOf(value: number, total: number): number {
+  const numericValue = Number(value);
+  const numericTotal = Number(total);
+  if (!Number.isFinite(numericValue) || !Number.isFinite(numericTotal) || numericTotal <= 0) return 0;
+  return Math.min(100, Math.max(0, numericValue / numericTotal * 100));
 }
 export function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-GB", {

@@ -68,12 +68,6 @@ function useCloudStoreValue() {
     void refresh().finally(() => setLoading(false));
   }, [refresh, userId]);
 
-  useEffect(() => {
-    const recover = () => { void refresh(); };
-    window.addEventListener('drive:online', recover);
-    return () => window.removeEventListener('drive:online', recover);
-  }, [refresh]);
-
   const run = useCallback(async (operation: () => Promise<void>, domains: Array<"browser" | "storage" | "trash" | "recent" | "starred" | "activity">) => {
     setError("");
     try { await operation(); await refresh(domains); return true; }

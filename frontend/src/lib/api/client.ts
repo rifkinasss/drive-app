@@ -10,30 +10,12 @@ const apiUrl = env.apiUrl
   .replace(/\/api$/i, "");
 let csrfReady = false;
 let csrfRequest: Promise<void> | null = null;
-let networkRequestId = 0;
-
-function nextNetworkRequestId(): number {
-  networkRequestId += 1;
-  return networkRequestId;
-}
-
-function notifyNetwork(eventName: "drive:network-failure" | "drive:network-recovered", requestId: number): void {
-  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(eventName, { detail: { requestId } }));
-}
-
-function networkError(requestId: number): ApiError {
-  notifyNetwork("drive:network-failure", requestId);
+function networkError(): ApiError {
   return new ApiError({
     status: 0,
     code: "NETWORK_UNAVAILABLE",
-    message:
-      "No internet connection. Drive by NasLabs requires an internet connection to access your files.",
+    message: "Unable to connect. Check your connection and try again.",
   });
-}
-
-function networkResponse(response: Response, requestId: number): Response {
-  notifyNetwork("drive:network-recovered", requestId);
-  return response;
 }
 
 function shouldInvalidateSession(path: string): boolean {
@@ -65,15 +47,14 @@ function readCookie(name: string): string | undefined {
 export async function csrfCookie(): Promise<void> {
   if (csrfRequest) return csrfRequest;
   csrfRequest = (async () => {
-    const requestId = nextNetworkRequestId();
     let response: Response;
     try {
-      response = networkResponse(await fetch(`${apiUrl}/sanctum/csrf-cookie`, {
+      response = await fetch(`${apiUrl}/sanctum/csrf-cookie`, {
         credentials: "include",
         headers: { Accept: "application/json" },
-      }), requestId);
+      });
     } catch {
-      throw networkError(requestId);
+      throw networkError();
     }
     if (!response.ok)
       throw new ApiError({
@@ -138,14 +119,13 @@ export async function apiFetch<T>(
   const token = readCookie("XSRF-TOKEN");
   if (token) headers.set("X-XSRF-TOKEN", token);
   let response: Response;
-  const requestId = nextNetworkRequestId();
   try {
-    response = networkResponse(await fetch(
+    response = await fetch(
       `${apiUrl}${path.startsWith("/") ? path : `/${path}`}`,
       { ...init, headers, credentials: "include" },
-    ), requestId);
+    );
   } catch {
-    throw networkError(requestId);
+    throw networkError();
   }
   if (response.ok) {
     if (response.status === 204) return undefined as T;
@@ -173,9 +153,8 @@ export async function apiBlob(
   extraHeaders?: HeadersInit,
 ): Promise<Blob> {
   let response: Response;
-  const requestId = nextNetworkRequestId();
   try {
-    response = networkResponse(await fetch(
+    response = await fetch(
       `${apiUrl}${path.startsWith("/") ? path : `/${path}`}`,
       {
         credentials: isPublic ? "omit" : "include",
@@ -185,9 +164,9 @@ export async function apiBlob(
           ...extraHeaders,
         },
       },
-    ), requestId);
+    );
   } catch {
-    throw networkError(requestId);
+    throw networkError();
   }
   if (!response.ok) {
     const error = await parseError(response);

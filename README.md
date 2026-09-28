@@ -82,7 +82,7 @@ php artisan serve --host=127.0.0.1 --port=8000
 Di terminal backend kedua, jalankan worker agar email dan pekerjaan queue diproses:
 
 ```sh
-cd internal-projects/Cloud-V2-New/backend
+cd internal-projects/Drive-App/backend
 php artisan queue:work database
 ```
 
@@ -153,7 +153,7 @@ Dokumentasi API Laravel tersedia pada `/docs`, referensi endpoint pada `/docs/ap
 ## Struktur repository
 
 ```text
-Cloud-V2-New/
+Drive-App/
 ├── backend/   Laravel API, migrasi, seeder, pengujian, dan runbook operasi
 └── frontend/  Aplikasi web Next.js
 ```

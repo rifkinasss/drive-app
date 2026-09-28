@@ -1,6 +1,8 @@
-# Cloud by NasLabs
+# Drive by NasLabs
 
-Cloud by NasLabs adalah aplikasi penyimpanan dan pengelolaan file pribadi melalui browser. Pengguna dapat mengatur file dalam folder, mencari dan mengurutkan isi folder, mengelola file yang baru dibuka, menyimpan item favorit, serta berbagi akses dengan pengguna lain atau melalui tautan publik.
+Version 2.0.0
+
+Drive by NasLabs adalah aplikasi penyimpanan dan pengelolaan file pribadi melalui browser. Pengguna dapat mengatur file dalam folder, mencari dan mengurutkan isi folder, mengelola file yang baru dibuka, menyimpan item favorit, serta berbagi akses dengan pengguna lain atau melalui tautan publik.
 
 Repository ini memuat frontend web dan backend API dalam satu direktori. Frontend menjadi antarmuka pengguna, sedangkan Laravel API dan PostgreSQL menjadi sumber data utama. File disimpan pada disk privat backend, bukan disajikan sebagai URL publik.
 
@@ -23,7 +25,7 @@ Cloud ditujukan bagi individu dan tim kecil yang perlu menyimpan file, mengaturn
 
 - Masuk menggunakan sesi browser Laravel Sanctum, pemulihan kata sandi, verifikasi email, dan penerimaan undangan.
 - Status akun yang tersedia adalah pending, active, dan disabled. Hanya akun aktif yang dapat menggunakan area aplikasi yang dilindungi.
-- Berbagi file atau folder dengan akun Cloud lain sebagai viewer atau editor. Hak editor pada v1 mencakup penggantian nama file, bukan pengelolaan folder.
+- Berbagi file atau folder dengan akun Drive lain sebagai viewer atau editor. Hak editor pada v1 mencakup penggantian nama file, bukan pengelolaan folder.
 - Membuat tautan publik hanya-baca untuk file atau folder. Tautan folder membatasi penjelajahan ke subtree yang dibagikan.
 - Memperbarui nama profil, mengatur preferensi tampilan/file, dan meminta email reset kata sandi dari halaman pengaturan. Pengelolaan sesi aktif belum tersedia melalui API.
 
@@ -53,7 +55,7 @@ Tautan publik memberi akses viewer tanpa akun, jadi pemilik perlu membagikannya 
 - Backend: Laravel 13, PHP 8.3+, Laravel Sanctum, dan Scramble untuk dokumentasi API.
 - Database: PostgreSQL.
 - Autentikasi browser: cookie sesi Sanctum dan perlindungan CSRF. Frontend tidak menyimpan bearer token.
-- Queue, session, dan cache lokal menggunakan dukungan database Laravel. Penyimpanan Cloud memakai disk privat yang lokasinya dapat dikonfigurasi.
+- Queue, session, dan cache lokal menggunakan dukungan database Laravel. Penyimpanan Drive memakai disk privat yang lokasinya dapat dikonfigurasi.
 
 Versi dependency mengikuti file manifest dan lockfile masing-masing aplikasi. Periksa versi yang benar-benar terpasang pada mesin sebelum rilis.
 

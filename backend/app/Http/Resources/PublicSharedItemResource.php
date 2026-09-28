@@ -19,6 +19,7 @@ class PublicSharedItemResource extends JsonResource
             'modifiedAt' => $this->item->updated_at?->utc()->toISOString(),
             'ownerDisplayName' => $this->owner->name,
             'permission' => 'viewer',
+            'allowDownload' => $this->link?->allow_download ?? true,
         ];
     }
 }

@@ -9,6 +9,7 @@ use App\Services\PublicShareService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PublicLinkController
 {
@@ -56,6 +57,45 @@ class PublicLinkController
     public function folderRegenerate(Request $request, Folder $folder, PublicShareService $public): JsonResponse
     {
         return $this->regenerate($request, $folder, $public, 'folder');
+    }
+
+    public function fileUpdate(Request $request, File $file, PublicShareService $public): JsonResponse
+    {
+        return $this->update($request, $file, $public, 'file');
+    }
+
+    public function folderUpdate(Request $request, Folder $folder, PublicShareService $public): JsonResponse
+    {
+        return $this->update($request, $folder, $public, 'folder');
+    }
+
+    private function update(Request $request, File|Folder $item, PublicShareService $public, string $type): JsonResponse
+    {
+        $this->owner($request, $item->owner_id);
+        $request->validate([
+            'expiration' => ['sometimes', Rule::in(['never', '24h', '7d', '30d', 'custom'])],
+            'expiresAt' => ['nullable', 'date', 'after:now'],
+            'password' => ['nullable', 'string', 'min:4', 'max:128'],
+            'allowDownload' => ['sometimes', 'boolean'],
+        ]);
+        $expiration = $request->input('expiration', 'never');
+        $expiresAt = match ($expiration) {
+            '24h' => now()->addDay(),
+            '7d' => now()->addDays(7),
+            '30d' => now()->addDays(30),
+            'custom' => $request->date('expiresAt'),
+            default => null,
+        };
+        $options = [
+            'expiresAt' => $expiresAt,
+            'allowDownload' => $request->boolean('allowDownload', true),
+        ];
+        if ($request->has('password')) {
+            $options['password'] = $request->input('password');
+        }
+        [$link, $url] = $public->configure($request->user(), $item, $options);
+
+        return ApiResponse::success((new PublicLinkResource((object) ['link' => $link, 'item' => $item, 'type' => $type, 'url' => $url]))->resolve($request));
     }
 
     private function show(Request $request, File|Folder $item, PublicShareService $public, string $type): JsonResponse

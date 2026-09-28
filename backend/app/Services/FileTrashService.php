@@ -9,18 +9,14 @@ use App\Models\Folder;
 use App\Models\InternalShare;
 use App\Models\PublicShareLink;
 use App\Models\User;
-use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class FileTrashService
 {
-    public function __construct(private readonly StorageQuotaService $quota, private readonly ActivityRecorder $activities, private readonly StorageNotificationService $storageNotifications) {}
+    public function __construct(private readonly StorageQuotaService $quota, private readonly ActivityRecorder $activities, private readonly StorageNotificationService $storageNotifications, private readonly TrashStorageService $trashStorage) {}
 
     public function deleteExpiredFile(User $owner, int $fileId): array
     {
@@ -184,7 +180,7 @@ class FileTrashService
     public function permanentFile(User $owner, File $file, bool $recordActivity = true): array
     {
         $this->assertTrashed($file->trashed_at !== null);
-        $staged = $this->stagePhysical($file);
+        $staged = $this->trashStorage->stage($file);
         try {
             $result = $this->quota->transaction($owner, function (User $lockedOwner) use ($file, $recordActivity): array {
                 $current = File::query()->whereKey($file->getKey())->where('owner_id', $lockedOwner->getKey())->whereNotNull('trashed_at')->lockForUpdate()->firstOrFail();
@@ -200,14 +196,14 @@ class FileTrashService
 
                 return ['deletedFiles' => 1, 'deletedFolders' => 0, 'freedBytes' => $size];
             });
-            $this->removeStaged($staged);
+            $this->trashStorage->remove($staged);
             if ($recordActivity) {
                 $this->storageNotifications->evaluate($owner);
             }
 
             return $result;
         } catch (Throwable $exception) {
-            $this->restoreStaged($staged);
+            $this->trashStorage->restore($staged);
             throw $exception;
         }
     }
@@ -257,7 +253,7 @@ class FileTrashService
         $staged = [];
         try {
             foreach ($files as $file) {
-                $staged[] = $this->stagePhysical($file);
+                $staged[] = $this->trashStorage->stage($file);
             }
             $result = $this->quota->transaction($owner, function (User $lockedOwner) use ($folderIds, $fileIds, $root, $emptyTrash, $recordActivity): array {
                 $files = File::query()->where('owner_id', $lockedOwner->getKey())->whereIn('id', $fileIds)->whereNotNull('trashed_at')->lockForUpdate()->get();
@@ -307,7 +303,7 @@ class FileTrashService
                 return ['deletedFiles' => $deletedFiles, 'deletedFolders' => $deletedFolders, 'freedBytes' => $freedBytes];
             });
             foreach ($staged as $path) {
-                $this->removeStaged($path);
+                $this->trashStorage->remove($path);
             }
             if ($recordActivity) {
                 $this->storageNotifications->evaluate($owner);
@@ -316,7 +312,7 @@ class FileTrashService
             return $result;
         } catch (Throwable $exception) {
             foreach (array_reverse($staged) as $path) {
-                $this->restoreStaged($path);
+                $this->trashStorage->restore($path);
             }
             throw $exception;
         }
@@ -385,70 +381,6 @@ class FileTrashService
         $extension = pathinfo($name, PATHINFO_EXTENSION);
 
         return $extension === '' ? null : mb_strtolower($extension);
-    }
-
-    private function stagePhysical(File $file): ?array
-    {
-        if ($file->path === null) {
-            return null;
-        }
-        $storage = $this->storage($file);
-        if (! $storage->exists($file->path)) {
-            Log::warning('Trashed file metadata has no physical object during deletion.', ['file_uuid' => $file->uuid]);
-
-            return null;
-        }
-        $stagedPath = 'tmp-delete-pending/'.str()->uuid();
-        try {
-            if (! $storage->move($file->path, $stagedPath)) {
-                throw new RuntimeException('Unable to stage deleted file.');
-            }
-        } catch (Throwable $exception) {
-            throw new HttpException(507, 'Storage cleanup is unavailable.', $exception);
-        }
-
-        return ['disk' => $file->disk ?: config('cloud.disk'), 'original' => $file->path, 'staged' => $stagedPath];
-    }
-
-    private function removeStaged(?array $staged): void
-    {
-        if ($staged === null) {
-            return;
-        }
-        try {
-            $storage = Storage::disk($staged['disk']);
-            $committed = 'tmp-delete-committed/'.basename($staged['staged']);
-            if ($storage->exists($staged['staged']) && ! $storage->move($staged['staged'], $committed)) {
-                throw new RuntimeException('Unable to mark deletion staging as committed.');
-            }
-            $storage->delete($committed);
-        } catch (Throwable $exception) {
-            Log::error('Unable to remove staged deleted file.', ['file_uuid_path' => $staged['original'], 'exception' => $exception]);
-        }
-    }
-
-    private function restoreStaged(?array $staged): void
-    {
-        if ($staged === null) {
-            return;
-        }
-        try {
-            $storage = Storage::disk($staged['disk']);
-            if ($storage->exists($staged['staged'])) {
-                $storage->move($staged['staged'], $staged['original']);
-            }
-        } catch (Throwable $exception) {
-            Log::error('Unable to restore staged deleted file.', ['file_uuid_path' => $staged['original'], 'exception' => $exception]);
-        }
-    }
-
-    private function storage(File $file): FilesystemAdapter
-    {
-        try {
-            return Storage::disk($file->disk ?: config('cloud.disk'));
-        } catch (Throwable $exception) {
-            throw new HttpException(507, 'Storage cleanup is unavailable.', $exception);
-        }
     }
 
     private function assertTrashed(bool $condition): void

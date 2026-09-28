@@ -54,6 +54,9 @@ export interface PublicShareLink {
   permission: "viewer";
   createdAt: string;
   updatedAt?: string;
+  expiresAt?: string | null;
+  passwordProtected?: boolean;
+  allowDownload?: boolean;
   sharedItem?: CloudItem;
 }
 
@@ -68,6 +71,7 @@ export interface PublicSharedItem {
   modifiedAt: string;
   thumbnail?: string;
   children: PublicSharedItem[];
+  allowDownload?: boolean;
 }
 
 export type PublicShareResolution =

@@ -1,6 +1,8 @@
+import { env } from '@/config/env'
+
 function appBaseUrl(): string {
   if (typeof window !== 'undefined') return window.location.origin
-  return process.env.NEXT_PUBLIC_APP_URL ?? ''
+  return env.appUrl
 }
 
 export function buildInvitationUrl(token: string): string {

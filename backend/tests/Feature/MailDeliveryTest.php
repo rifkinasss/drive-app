@@ -20,7 +20,7 @@ class MailDeliveryTest extends TestCase
     {
         parent::setUp();
 
-        config(['app.frontend_url' => 'https://cloud.naslabs.my.id']);
+        config(['app.frontend_url' => 'https://drive.naslabs.my.id']);
     }
 
     public function test_transactional_mail_notifications_are_queued_after_commit_and_encrypted(): void
@@ -94,14 +94,14 @@ class MailDeliveryTest extends TestCase
         $verificationMail = (new EmailVerificationNotification($verification, 'verify-token'))->toMail($user);
         $resetMail = (new QueuedPasswordResetNotification('reset-token'))->toMail($user);
 
-        $this->assertSame('https://cloud.naslabs.my.id/invite/invite-token', $invitationMail->actionUrl);
+        $this->assertSame('https://drive.naslabs.my.id/invite/invite-token', $invitationMail->actionUrl);
         $this->assertStringContainsString('Hello Cloud User', $invitationMail->greeting);
         $this->assertStringContainsString('expires', implode(' ', [...$invitationMail->introLines, ...$invitationMail->outroLines]));
-        $this->assertSame('https://cloud.naslabs.my.id/verify-email/verify-token', $verificationMail->actionUrl);
+        $this->assertSame('https://drive.naslabs.my.id/verify-email/verify-token', $verificationMail->actionUrl);
         $this->assertStringContainsString('expires', implode(' ', [...$verificationMail->introLines, ...$verificationMail->outroLines]));
-        $this->assertSame('Reset your Cloud by NasLabs password', $resetMail->subject);
+        $this->assertSame('Reset your Drive by NasLabs password', $resetMail->subject);
         $this->assertSame(
-            'https://cloud.naslabs.my.id/reset-password?token=reset-token&email=cloud-user%40example.test',
+            'https://drive.naslabs.my.id/reset-password?token=reset-token&email=cloud-user%40example.test',
             $resetMail->actionUrl,
         );
         $this->assertStringContainsString('60 minutes', implode(' ', [...$resetMail->introLines, ...$resetMail->outroLines]));

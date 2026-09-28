@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { api, ApiError, csrfCookie } from "@/lib/api/client";
+import { ApiError, csrfCookie } from "@/lib/api/client";
+import { authApi } from "@/features/auth/api/auth.api";
 import type { CloudUser } from "@/types/user";
 
 let currentUserId = "";
@@ -34,14 +35,14 @@ export function useAuthStore() {
   const refreshUser = useCallback(async () => {
     sessionError = null;
     try {
-      const response = await api.get<{ user: CloudUser }>("/api/auth/user");
+      const response = await authApi.getCurrentUser();
       currentUser = mapUser(response.user);
       currentUserId = currentUser.id;
     } catch (reason) {
       currentUser = null;
       currentUserId = "";
       if (reason instanceof ApiError) sessionError = reason;
-      else sessionError = new ApiError({ status: 0, message: "Unable to connect to Cloud. Check your connection and try again." });
+      else sessionError = new ApiError({ status: 0, message: "Unable to connect to Drive. Check your connection and try again." });
     } finally {
       loading = false;
       listeners.forEach((listener) => listener());
@@ -58,13 +59,13 @@ export function useAuthStore() {
     refreshUser,
     login: async (email: string, password: string, remember = false) => {
       await csrfCookie();
-      await api.post("/api/auth/login", { email, password, remember });
+      await authApi.login(email, password, remember);
       const user = await refreshUser();
       if (!user) throw sessionError ?? new ApiError({ status: 401, message: "Unable to establish an authenticated session." });
       return user;
     },
     logout: async () => {
-      try { await api.post("/api/auth/logout"); } finally {
+      try { await authApi.logout(); } finally {
       currentUserId = "";
       currentUser = null;
       loading = false;

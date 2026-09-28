@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { userService, type AccountSetupMethod } from "@/services/user-service";
+import { usersApi as userService } from "@/features/admin/api/users.api";
+import type { AccountSetupMethod } from "@/features/admin/types/user.types";
 import type { CloudUser, UserRole, UserStatus } from "@/types/user";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -16,6 +17,8 @@ export function useUserStore() {
     catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to load users."); }
     finally { setLoading(false); }
   }, []);
+  // User management state follows the authenticated administrator role.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (auth.currentUser?.role === "admin") void refresh(); else { setUsers([]); setLoading(false); } }, [auth.currentUser?.role, refresh]);
 
   const addUser = async (input: { name: string; email: string; role: UserRole; quotaBytes: number; setup?: AccountSetupMethod; password?: string }) => {

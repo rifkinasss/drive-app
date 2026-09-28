@@ -8,6 +8,7 @@ use App\Exceptions\ShareConflictException;
 use App\Models\File;
 use App\Models\Folder;
 use App\Models\InternalShare;
+use App\Models\NotificationPreference;
 use App\Models\PublicShareLink;
 use App\Models\User;
 use App\Notifications\InternalSharePermissionChanged;
@@ -22,7 +23,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class InternalShareService
 {
-    public function __construct(private readonly ActivityRecorder $activities, private readonly SystemSettingService $settings) {}
+    public function __construct(private readonly ActivityRecorder $activities, private readonly SystemSettingService $settings, private readonly PushNotificationService $push) {}
 
     public function create(User $owner, File|Folder $item, int $recipientId, SharePermission $permission): InternalShare
     {
@@ -34,7 +35,7 @@ class InternalShareService
         }
         $recipient = User::query()->whereKey($recipientId)->where('status', 'active')->first();
         if ($recipient === null) {
-            throw ValidationException::withMessages(['recipientId' => 'The recipient must be an active Cloud user.']);
+            throw ValidationException::withMessages(['recipientId' => 'The recipient must be an active Drive user.']);
         }
         if ($recipient->getKey() === $owner->getKey()) {
             throw ValidationException::withMessages(['recipientId' => 'You cannot share an item with yourself.']);
@@ -56,7 +57,10 @@ class InternalShareService
             $metadata = ['recipientName' => $recipient->name, 'permission' => $permission->value, 'shareableType' => $type];
             $this->activities->record($owner, ActivityAction::ShareCreated, $item, $metadata);
             $this->activities->recordFor($recipient, $owner, ActivityAction::ShareReceived, $item, ['ownerName' => $owner->name, 'permission' => $permission->value, 'shareableType' => $type]);
-            $recipient->notify(new InternalShareReceived($item, $permission->value, $owner->getKey(), $owner->name));
+            if ((NotificationPreference::query()->where('user_id', $recipient->getKey())->value('shares') ?? true) === true) {
+                $recipient->notify(new InternalShareReceived($item, $permission->value, $owner->getKey(), $owner->name));
+                $this->push->send($recipient, 'share.received', 'Item shared with you', $owner->name.' shared an item with you.', '/shared');
+            }
 
             return $share->load('recipient');
         });
@@ -76,7 +80,10 @@ class InternalShareService
                 'to' => $permission->value,
             ]);
             if ($old !== $permission) {
-                $recipient->notify(new InternalSharePermissionChanged($item, $old->value, $permission->value, $owner->getKey(), $owner->name));
+                if ((NotificationPreference::query()->where('user_id', $recipient->getKey())->value('shares') ?? true) === true) {
+                    $recipient->notify(new InternalSharePermissionChanged($item, $old->value, $permission->value, $owner->getKey(), $owner->name));
+                    $this->push->send($recipient, 'share.permission_changed', 'Sharing permission changed', $owner->name.' changed your access to a shared item.', '/shared');
+                }
             }
 
             return $share->fresh('recipient');
@@ -92,7 +99,10 @@ class InternalShareService
         DB::transaction(function () use ($owner, $share, $item, $recipient, $itemType): void {
             $item = $this->item($share);
             $this->activities->record($owner, ActivityAction::ShareRevoked, $item, ['recipientName' => $recipient->name, 'permission' => $share->permission->value]);
-            $recipient->notify(new InternalShareRevoked($itemType, $item->uuid, $item instanceof File ? $item->original_name : $item->name, $owner->getKey(), $owner->name));
+            if ((NotificationPreference::query()->where('user_id', $recipient->getKey())->value('shares') ?? true) === true) {
+                $recipient->notify(new InternalShareRevoked($itemType, $item->uuid, $item instanceof File ? $item->original_name : $item->name, $owner->getKey(), $owner->name));
+                $this->push->send($recipient, 'share.revoked', 'Sharing access removed', $owner->name.' removed your access to a shared item.', '/shared');
+            }
             $share->delete();
         });
     }

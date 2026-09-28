@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Folder\StoreFolderRequest;
 use App\Http\Requests\Folder\UpdateFolderRequest;
+use App\Http\Resources\FolderDetailsResource;
 use App\Http\Resources\FolderResource;
 use App\Models\Folder;
 use App\Services\FolderService;
@@ -58,7 +59,15 @@ class FolderController
         $this->assertOwner($request, $folder);
         $this->assertNotTrashed($folder);
 
-        return ApiResponse::success($this->resourceData($folder->load('parent'), $request));
+        return ApiResponse::success($this->resourceData($folder, $request));
+    }
+
+    public function details(Request $request, Folder $folder): JsonResponse
+    {
+        $this->assertOwner($request, $folder);
+        $this->assertNotTrashed($folder);
+
+        return ApiResponse::success((new FolderDetailsResource($folder->load(['parent', 'owner'])))->resolve($request));
     }
 
     public function update(UpdateFolderRequest $request, Folder $folder, FolderService $folders): JsonResponse

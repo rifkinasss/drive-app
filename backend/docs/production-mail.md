@@ -7,7 +7,7 @@ The app uses Laravel's provider-neutral SMTP transport. Choose a provider that o
 - Local: `MAIL_MAILER=log`; messages go to protected application logs and are not delivered.
 - Production: `MAIL_MAILER=smtp`, verified host/credentials, `MAIL_SCHEME=smtps` with port 465 for implicit TLS, or `MAIL_SCHEME=smtp` with the provider's STARTTLS port (normally 587). Laravel 13.31 reads `MAIL_SCHEME`; `MAIL_ENCRYPTION` is not consumed by this app's current mail config.
 - `MAIL_TIMEOUT=10` bounds SMTP socket waits. Mail is queued, so a provider delay/failure does not hold the user-facing HTTP request open.
-- Global sender comes from `MAIL_FROM_ADDRESS` and `MAIL_FROM_NAME="Cloud by NasLabs"`. Choose an address under a verified domain you control. No per-notification sender overrides or personal Reply-To are configured.
+- Global sender comes from `MAIL_FROM_ADDRESS` and `MAIL_FROM_NAME="Drive by NasLabs"`. Choose an address under a verified domain you control. No per-notification sender overrides or personal Reply-To are configured.
 
 Production SMTP example (placeholders only):
 
@@ -20,7 +20,7 @@ MAIL_USERNAME=<provider-smtp-username>
 MAIL_PASSWORD=<secret-from-secret-manager>
 MAIL_TIMEOUT=10
 MAIL_FROM_ADDRESS=<verified-sender-address>
-MAIL_FROM_NAME="Cloud by NasLabs"
+MAIL_FROM_NAME="Drive by NasLabs"
 ```
 
 Never disable TLS certificate verification to work around provider setup. If a provider requires STARTTLS on 587, use its documented host/credentials and test the connection using the diagnostic command below. Changing mail environment values requires `php artisan config:cache` to be refreshed and existing queue workers to be restarted; this phase does not restart a server or install a worker service.
@@ -81,7 +81,7 @@ The command logs only exception class and recipient domain on failure, not addre
 - [ ] Generate a dedicated SMTP credential with only mail-send permissions.
 - [ ] Confirm the sender address is approved and aligned with the verified domain.
 - [ ] Run one diagnostic to a controlled mailbox; verify inbox/spam and sender display.
-- [ ] Open invitation, verification, and password-reset links; confirm each remains on `https://cloud.naslabs.my.id` and honors its expiry/single-use behavior.
+- [ ] Open invitation, verification, and password-reset links; confirm each remains on `https://drive.naslabs.my.id` and honors its expiry/single-use behavior.
 - [ ] Confirm the database queue worker is running and monitor failed jobs/backlog.
 
 No DNS records, provider account, server, or real recipient were contacted or changed in this phase. Code and environment template are ready; provider configuration and real delivery remain unverified until credentials and a controlled mailbox are supplied.

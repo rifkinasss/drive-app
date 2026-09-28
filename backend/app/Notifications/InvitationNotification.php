@@ -30,9 +30,9 @@ class InvitationNotification extends Notification implements ShouldBeEncrypted, 
         $url = rtrim((string) config('app.frontend_url'), '/').'/'.config('cloud.invitation_url_path').'/'.$this->token;
 
         return (new MailMessage)
-            ->subject('You have been invited to Cloud by NasLabs')
+            ->subject('You have been invited to Drive by NasLabs')
             ->greeting('Hello '.$notifiable->name.',')
-            ->line("You've been invited to Cloud by NasLabs.")
+            ->line("You've been invited to Drive by NasLabs.")
             ->line('Account: '.$notifiable->email)
             ->action('Accept invitation', $url)
             ->line('This invitation expires '.$this->invitation->expires_at->diffForHumans().'.');

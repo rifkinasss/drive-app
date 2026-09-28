@@ -58,6 +58,20 @@ class PublicShareTest extends TestCase
         $this->get('/api/public/shares/'.$token.'/download')->assertOk()->assertStreamedContent('public bytes');
     }
 
+    public function test_public_link_can_require_password_and_disable_downloads(): void
+    {
+        $owner = User::factory()->create();
+        $file = $this->storedFile($owner, 'protected.txt', 'protected', 'text/plain');
+        $this->actingAs($owner, 'sanctum');
+        $token = basename($this->postJson('/api/files/'.$file->uuid.'/public-link')->json('data.url'));
+        $this->patchJson('/api/files/'.$file->uuid.'/public-link', ['expiration' => '7d', 'password' => 'secret-pass', 'allowDownload' => false])->assertOk()->assertJsonPath('data.passwordProtected', true)->assertJsonPath('data.allowDownload', false);
+
+        $this->getJson('/api/public/shares/'.$token)->assertUnauthorized();
+        $this->withHeader('X-Share-Password', 'secret-pass')->getJson('/api/public/shares/'.$token)->assertOk();
+        $this->withHeader('X-Share-Password', 'secret-pass')->get('/api/public/shares/'.$token.'/download')->assertForbidden();
+        $this->assertDatabaseMissing('public_share_links', ['password_hash' => 'secret-pass']);
+    }
+
     public function test_disable_regenerate_and_invalid_tokens_are_generic_and_old_tokens_fail(): void
     {
         $owner = User::factory()->create();

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\File\UpdateFileRequest;
+use App\Http\Resources\FileDetailsResource;
 use App\Http\Resources\FileResource;
 use App\Models\File;
 use App\Models\Folder;
@@ -47,7 +48,14 @@ class FileController
     {
         $this->assertAccessible($request, $file);
 
-        return ApiResponse::success($this->resourceData($file->load('folder'), $request));
+        return ApiResponse::success($this->resourceData($file, $request));
+    }
+
+    public function details(Request $request, File $file): JsonResponse
+    {
+        $this->assertAccessible($request, $file);
+
+        return ApiResponse::success((new FileDetailsResource($file->load(['folder', 'owner'])))->resolve($request));
     }
 
     public function update(UpdateFileRequest $request, File $file, FileService $files): JsonResponse

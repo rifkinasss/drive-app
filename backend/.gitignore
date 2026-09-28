@@ -30,6 +30,7 @@ cloud-*-manifest.json
 SHA256SUMS
 *-SHA256SUMS
 /storage/pail
+/storage/framework/views/*
 /vendor
 _ide_helper.php
 Homestead.json

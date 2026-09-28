@@ -23,7 +23,7 @@ class SystemSettingsTest extends TestCase
         $this->actingAs($admin, 'sanctum')
             ->getJson('/api/admin/settings/general')
             ->assertOk()
-            ->assertJsonPath('data.settings.instanceName', 'Cloud by NasLabs');
+            ->assertJsonPath('data.settings.instanceName', 'Drive by NasLabs');
 
         $this->patchJson('/api/admin/settings/general', ['instanceName' => 'NasLabs Cloud'])
             ->assertOk()
@@ -39,7 +39,7 @@ class SystemSettingsTest extends TestCase
 
         $this->patchJson('/api/admin/settings/general', ['instanceName' => 'Changed', 'timezone' => 'Not/AZone'])
             ->assertUnprocessable();
-        $this->getJson('/api/admin/settings/general')->assertJsonPath('data.settings.instanceName', 'Cloud by NasLabs');
+        $this->getJson('/api/admin/settings/general')->assertJsonPath('data.settings.instanceName', 'Drive by NasLabs');
 
         $this->patchJson('/api/admin/settings/general', ['maxUploadSizeBytes' => 1])
             ->assertUnprocessable();

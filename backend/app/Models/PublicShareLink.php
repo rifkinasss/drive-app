@@ -20,6 +20,8 @@ class PublicShareLink extends Model
         'token_encrypted',
         'enabled',
         'permission',
+        'password_hash',
+        'allow_download',
         'expires_at',
     ];
 
@@ -35,6 +37,7 @@ class PublicShareLink extends Model
         return [
             'enabled' => 'boolean',
             'permission' => PublicSharePermission::class,
+            'allow_download' => 'boolean',
             'expires_at' => 'datetime',
         ];
     }

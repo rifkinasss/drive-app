@@ -1,4 +1,4 @@
-# Cloud by NasLabs — Frontend integration
+# Drive by NasLabs frontend
 
 The frontend uses the Laravel API as its source of truth. Copy `.env.example` to
 `.env.local` and set `NEXT_PUBLIC_API_URL` to the backend origin.
@@ -22,7 +22,7 @@ cookies and `credentials: "include"`; the frontend does not store JWTs or
 session tokens. Login initializes `/sanctum/csrf-cookie` before calling the
 login endpoint. The backend must allow the frontend origin with credentials.
 
-Production uses `https://cloud.naslabs.my.id` for the frontend and
-`https://api-cloud.naslabs.my.id` for the API. Configure HTTPS, CORS,
+Production uses `https://drive.naslabs.my.id` for the frontend and
+`https://api-drive.naslabs.my.id` for the API. Configure HTTPS, CORS,
 `SANCTUM_STATEFUL_DOMAINS`, and the session cookie domain/secure/same-site
 settings for those domains; do not copy local cookie settings unchanged.

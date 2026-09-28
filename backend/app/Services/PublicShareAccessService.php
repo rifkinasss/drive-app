@@ -10,14 +10,14 @@ class PublicShareAccessService
 {
     public function __construct(private readonly PublicShareService $public) {}
 
-    public function root(string $token): array
+    public function root(string $token, ?string $password = null): array
     {
-        return $this->public->resolve($token);
+        return $this->public->resolve($token, $password);
     }
 
-    public function file(string $token, File $file): array
+    public function file(string $token, File $file, ?string $password = null): array
     {
-        $context = $this->root($token);
+        $context = $this->root($token, $password);
         if ($context['type'] === 'file') {
             if ($context['item']->getKey() !== $file->getKey()) {
                 throw new PublicShareUnavailableException;
@@ -33,9 +33,9 @@ class PublicShareAccessService
         return $context;
     }
 
-    public function folder(string $token, ?string $folderUuid = null): array
+    public function folder(string $token, ?string $folderUuid = null, ?string $password = null): array
     {
-        $context = $this->root($token);
+        $context = $this->root($token, $password);
         if ($context['type'] !== 'folder') {
             throw new PublicShareUnavailableException;
         }

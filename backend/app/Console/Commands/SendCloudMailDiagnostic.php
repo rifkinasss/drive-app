@@ -11,7 +11,7 @@ class SendCloudMailDiagnostic extends Command
 {
     protected $signature = 'cloud:mail-test {recipient : One controlled test email address} {--force : Confirm a one-recipient send in production}';
 
-    protected $description = 'Send one provider-agnostic Cloud mail delivery diagnostic';
+    protected $description = 'Send one provider-agnostic Drive mail delivery diagnostic';
 
     public function handle(): int
     {
@@ -38,14 +38,14 @@ class SendCloudMailDiagnostic extends Command
 
         try {
             Mail::mailer(config('mail.default'))->raw(
-                'This is a one-time Cloud by NasLabs mail delivery diagnostic. No action is required.',
+                'This is a one-time Drive by NasLabs mail delivery diagnostic. No action is required.',
                 function ($message) use ($recipient): void {
-                    $message->to($recipient)->subject('Cloud by NasLabs delivery check');
+                    $message->to($recipient)->subject('Drive by NasLabs delivery check');
                 },
             );
         } catch (Throwable $exception) {
             $recipientDomain = substr(strrchr($recipient, '@') ?: '', 1);
-            Log::warning('Cloud mail diagnostic failed.', [
+            Log::warning('Drive mail diagnostic failed.', [
                 'exception_class' => $exception::class,
                 'recipient_domain' => $recipientDomain,
             ]);

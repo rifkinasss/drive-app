@@ -1,6 +1,6 @@
-# Cloud by NasLabs API
+# Drive by NasLabs API
 
-Laravel API for Cloud by NasLabs. The current foundation includes session-based Sanctum authentication, account setup, private folders/files, storage accounting, secure streaming, Trash lifecycle, personal activity, internal sharing, and public viewer links; full notifications remain deferred.
+Laravel API for Drive by NasLabs. The current foundation includes session-based Sanctum authentication, account setup, private folders/files, storage accounting, secure streaming, Trash lifecycle, personal activity, internal sharing, public viewer links, and database notifications.
 
 ## Requirements
 
@@ -44,11 +44,11 @@ The authentication routes are:
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/reset-password`
 
-Set `FRONTEND_URL`, `SANCTUM_STATEFUL_DOMAINS`, `SESSION_DOMAIN`, and `SESSION_SECURE_COOKIE` per environment. Local development uses `http://localhost:3000`; production uses `https://cloud.naslabs.my.id`. `SESSION_DOMAIN=.naslabs.my.id` and `SESSION_SECURE_COOKIE=true` are production examples, not hardcoded defaults.
+Set `FRONTEND_URL`, `SANCTUM_STATEFUL_DOMAINS`, `SESSION_DOMAIN`, and `SESSION_SECURE_COOKIE` per environment. Local development uses `http://localhost:3000`; production uses `https://drive.naslabs.my.id`. `SESSION_DOMAIN=.naslabs.my.id` and `SESSION_SECURE_COOKIE=true` are production examples, not hardcoded defaults.
 
 Password reset mail uses Laravel's configured mailer. With `MAIL_MAILER=log`, the reset URL is written to the application log and points to `${FRONTEND_URL}/reset-password` with `token` and `email` query parameters.
 
-For production, use `APP_DEBUG=false`, set `APP_URL` to `https://api-cloud.naslabs.my.id`, and set `FRONTEND_URL`/`CORS_ALLOWED_ORIGINS` to `https://cloud.naslabs.my.id`. Keep credentials and `APP_KEY` in the environment only.
+For production, use `APP_DEBUG=false`, set `APP_URL` to `https://api-drive.naslabs.my.id`, and set `FRONTEND_URL`/`CORS_ALLOWED_ORIGINS` to `https://drive.naslabs.my.id`. Keep credentials and `APP_KEY` in the environment only.
 
 The default queue is database-backed. The private `cloud` filesystem disk is local by default and can be moved to a deployment path with `CLOUD_STORAGE_ROOT`. Redis remains optional.
 
@@ -185,7 +185,7 @@ Each event stores a UUID, action enum, actor, subject type/UUID/name snapshot, s
 
 ## Internal sharing
 
-Internal sharing is account-based and limited to existing active Cloud users. Public links, anonymous access, external email invitations, and collaborative editing are not included. Ownership and quota remain with the owner; sharing does not copy files or consume recipient quota.
+Internal sharing is account-based and limited to existing active Drive users. Public links, anonymous access, external email invitations, and collaborative editing are not included. Ownership and quota remain with the owner; sharing does not copy files or consume recipient quota.
 
 Share management routes are `POST/GET /api/files/{file}/shares`, `POST/GET /api/folders/{folder}/shares`, `PATCH/DELETE /api/shares/{share}`. `GET /api/users/search?q=` returns at most 10 active users and excludes the current user. Duplicate shares return `409`; pending, disabled, self, or trashed-item recipients/items are rejected.
 
@@ -195,7 +195,7 @@ Viewer access is limited to metadata, preview, and download. Editor adds file re
 
 ## Public share links
 
-Public links are viewer-only and do not require a Cloud account. Owners manage file/folder links with `POST/GET/DELETE /api/{files|folders}/{id}/public-link` and `POST /api/{files|folders}/{id}/public-link/regenerate`. `GET /api/shared/links` lists the current owner's links. Public access uses `GET /api/public/shares/{token}`, plus token-scoped preview/download and folder browser routes.
+Public links are viewer-only and do not require a Drive account. Owners manage file/folder links with `POST/GET/DELETE /api/{files|folders}/{id}/public-link` and `POST /api/{files|folders}/{id}/public-link/regenerate`. `GET /api/shared/links` lists the current owner's links. Public access uses `GET /api/public/shares/{token}`, plus token-scoped preview/download and folder browser routes.
 
 Tokens contain 32 random bytes, are stored as SHA-256 hashes for lookup, and are encrypted with Laravel `Crypt` for owner copy-link retrieval. Raw tokens are never stored plaintext. Re-enable and regenerate rotate the token; disable invalidates it immediately. The public response exposes only viewer-safe metadata and owner display name—never owner email/ID, folder hierarchy, checksum, disk, stored name, or physical path.
 
@@ -213,7 +213,7 @@ Admins may change name, role, and quota. Email changes are intentionally deferre
 
 Self-disable and self-delete are rejected, and the last active admin cannot be demoted, disabled, or deleted. A user who still owns files, folders, or accounted storage cannot be deleted. A zero-data user can be removed after recipient shares, invitations, verification tokens, reset tokens, sessions, and the user’s own activity feed are cleaned up. Activity entries belonging to other users retain their actor snapshot and set the deleted actor reference to null.
 
-The summary reports total, active, pending, disabled, admin, regular-user, verified, and unverified counts, plus allocated quota and accounted usage. These storage values describe Cloud account allocation and metadata accounting, not physical server capacity.
+The summary reports total, active, pending, disabled, admin, regular-user, verified, and unverified counts, plus allocated quota and accounted usage. These storage values describe Drive account allocation and metadata accounting, not physical server capacity.
 
 ## System settings
 

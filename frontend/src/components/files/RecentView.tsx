@@ -13,7 +13,7 @@ import type { useCloudStore } from '@/stores/cloud-store'
 import { FileContextMenu } from '@/components/files/FileContextMenu'
 import { ShareDialog } from '@/components/files/ShareDialog'
 import { useUserStore } from '@/stores/user-store'
-import { cloudService } from '@/services/cloud-service'
+import { filesApi as cloudService } from '@/features/files/api/files.api'
 
 type Store = ReturnType<typeof useCloudStore>
 type TypeFilter = 'all' | 'document' | 'image' | 'video' | 'archive' | 'code' | 'other'

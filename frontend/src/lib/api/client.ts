@@ -1,32 +1,22 @@
-export interface ApiErrorShape {
-  status: number;
-  code?: string;
-  message: string;
-  errors?: Record<string, string[]>;
-  data?: unknown;
-}
+import { env } from "@/config/env";
+import { ApiError } from "@/lib/api/api-error";
 
-export class ApiError extends Error {
-  readonly status: number;
-  readonly code?: string;
-  readonly errors?: Record<string, string[]>;
-  readonly data?: unknown;
+export { ApiError } from "@/lib/api/api-error";
 
-  constructor(error: ApiErrorShape) {
-    super(error.message);
-    this.name = "ApiError";
-    this.status = error.status;
-    this.code = error.code;
-    this.errors = error.errors;
-    this.data = error.data;
-  }
-}
-
-const apiUrl = (
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
-).replace(/\/+$/, "").replace(/\/api$/i, "");
+const apiUrl = env.apiUrl
+  .replace(/\/+$/, "")
+  .replace(/\/api$/i, "");
 let csrfReady = false;
 let csrfRequest: Promise<void> | null = null;
+
+function networkError(): ApiError {
+  return new ApiError({
+    status: 0,
+    code: "NETWORK_UNAVAILABLE",
+    message:
+      "No internet connection. Drive by NasLabs requires an internet connection to access your files.",
+  });
+}
 
 function readCookie(name: string): string | undefined {
   if (typeof document === "undefined") return undefined;
@@ -39,10 +29,15 @@ function readCookie(name: string): string | undefined {
 export async function csrfCookie(): Promise<void> {
   if (csrfRequest) return csrfRequest;
   csrfRequest = (async () => {
-    const response = await fetch(`${apiUrl}/sanctum/csrf-cookie`, {
-      credentials: "include",
-      headers: { Accept: "application/json" },
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${apiUrl}/sanctum/csrf-cookie`, {
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+    } catch {
+      throw networkError();
+    }
     if (!response.ok)
       throw new ApiError({
         status: response.status,
@@ -69,10 +64,22 @@ async function parseError(response: Response): Promise<ApiError> {
   } catch {
     /* non-JSON server response */
   }
+  const messages: Record<number, string> = {
+    401: "Your session has expired. Please sign in again.",
+    403: "You do not have permission to perform this action.",
+    404: "The requested item could not be found.",
+    419: "Your secure session expired. Refresh and try again.",
+    500: "Drive could not complete the request.",
+    503: "Drive is temporarily unavailable. Please try again shortly.",
+  };
   return new ApiError({
     status: response.status,
     code: body.code,
-    message: body.message ?? response.statusText ?? "Request failed.",
+    message:
+      messages[response.status] ??
+      body.message ??
+      response.statusText ??
+      "Request failed.",
     errors: body.errors,
     data: body.data,
   });
@@ -93,10 +100,15 @@ export async function apiFetch<T>(
     headers.set("Content-Type", "application/json");
   const token = readCookie("XSRF-TOKEN");
   if (token) headers.set("X-XSRF-TOKEN", token);
-  const response = await fetch(
-    `${apiUrl}${path.startsWith("/") ? path : `/${path}`}`,
-    { ...init, headers, credentials: "include" },
-  );
+  let response: Response;
+  try {
+    response = await fetch(
+      `${apiUrl}${path.startsWith("/") ? path : `/${path}`}`,
+      { ...init, headers, credentials: "include" },
+    );
+  } catch {
+    throw networkError();
+  }
   if (response.ok) {
     if (response.status === 204) return undefined as T;
     const payload = (await response.json()) as { data?: T } & T;
@@ -116,17 +128,38 @@ export async function apiFetch<T>(
   throw error;
 }
 
-export async function apiBlob(path: string, isPublic = false): Promise<Blob> {
-  const response = await fetch(`${apiUrl}${path.startsWith("/") ? path : `/${path}`}`, {
-    credentials: isPublic ? "omit" : "include",
-    headers: { Accept: "application/octet-stream, application/pdf, image/*, text/*, video/*, audio/*" },
-  });
+export async function apiBlob(
+  path: string,
+  isPublic = false,
+  extraHeaders?: HeadersInit,
+): Promise<Blob> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `${apiUrl}${path.startsWith("/") ? path : `/${path}`}`,
+      {
+        credentials: isPublic ? "omit" : "include",
+        headers: {
+          Accept:
+            "application/octet-stream, application/pdf, image/*, text/*, video/*, audio/*",
+          ...extraHeaders,
+        },
+      },
+    );
+  } catch {
+    throw networkError();
+  }
   if (!response.ok) throw await parseError(response);
   return response.blob();
 }
 
-export async function apiDownload(path: string, filename: string, isPublic = false): Promise<void> {
-  const blob = await apiBlob(path, isPublic);
+export async function apiDownload(
+  path: string,
+  filename: string,
+  isPublic = false,
+  extraHeaders?: HeadersInit,
+): Promise<void> {
+  const blob = await apiBlob(path, isPublic, extraHeaders);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

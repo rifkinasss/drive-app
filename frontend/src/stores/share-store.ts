@@ -1,5 +1,5 @@
 "use client";
 
-import { shareService } from "@/services/share-service";
+import { internalSharesApi as shareService } from "@/features/sharing/api/internal-shares.api";
 
 export function useShareStore() { return shareService; }

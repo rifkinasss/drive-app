@@ -44,11 +44,20 @@ class FileTest extends TestCase
     public function test_file_response_uses_uuid_and_hides_internal_fields(): void
     {
         $user = User::factory()->create();
-        $file = File::factory()->create(['owner_id' => $user->id]);
+        $folder = Folder::factory()->create(['owner_id' => $user->id, 'name' => 'Reports']);
+        $file = File::factory()->create(['owner_id' => $user->id, 'folder_id' => $folder->id, 'is_starred' => true]);
         $this->actingAs($user, 'sanctum');
 
-        $response = $this->getJson('/api/files/'.$file->uuid)->assertOk();
+        $response = $this->getJson('/api/files/'.$file->uuid.'/details')->assertOk();
         $response->assertJsonPath('data.id', $file->uuid)
+            ->assertJsonPath('data.type', 'file')
+            ->assertJsonPath('data.extension', 'pdf')
+            ->assertJsonPath('data.sizeBytes', $file->size_bytes)
+            ->assertJsonPath('data.owner.id', $user->id)
+            ->assertJsonPath('data.location.id', $folder->uuid)
+            ->assertJsonPath('data.location.name', 'Reports')
+            ->assertJsonPath('data.starred', true)
+            ->assertJsonPath('data.shared', false)
             ->assertJsonMissingPath('data.stored_name')
             ->assertJsonMissingPath('data.owner_id')
             ->assertJsonMissingPath('data.folder_id');

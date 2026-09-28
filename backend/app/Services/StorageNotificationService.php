@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Models\UserStorageAlertState;
 use App\Notifications\StorageQuotaWarning;
@@ -11,13 +12,16 @@ use Throwable;
 
 class StorageNotificationService
 {
-    public function __construct(private readonly SystemSettingService $settings) {}
+    public function __construct(private readonly SystemSettingService $settings, private readonly PushNotificationService $push) {}
 
     public function evaluate(User $user): void
     {
         try {
             DB::transaction(function () use ($user): void {
                 $lockedUser = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+                if ((NotificationPreference::query()->where('user_id', $lockedUser->getKey())->value('quota') ?? true) === false) {
+                    return;
+                }
                 $thresholds = $this->thresholds();
                 $state = UserStorageAlertState::query()->where('user_id', $lockedUser->getKey())->lockForUpdate()->first();
                 if ($state === null) {
@@ -33,6 +37,7 @@ class StorageNotificationService
 
                 foreach ($crossed as $threshold) {
                     $lockedUser->notify(new StorageQuotaWarning($threshold, $used, $quota, $percentage));
+                    $this->push->send($lockedUser, 'quota.warning', 'Storage is almost full', 'Drive storage is '.$percentage.'% used.', '/storage');
                 }
                 $state->update(['notified_thresholds' => array_values(array_unique(array_merge($notified, $crossed)))]);
             });

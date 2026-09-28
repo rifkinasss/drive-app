@@ -26,11 +26,11 @@ function SystemAction({ action, primary }: { action: Action; primary?: boolean }
 }
 
 function SystemBrand() {
-  return <div className="system-page-brand"><span aria-hidden="true"><Cloud size={16} /></span><div><strong>Cloud</strong><small>by NasLabs</small></div></div>
+  return <div className="system-page-brand"><span aria-hidden="true"><Cloud size={16} /></span><div><strong>Drive</strong><small>by NasLabs</small></div></div>
 }
 
 function SystemFooter() {
-  return <footer className="system-page-footer">Cloud by NasLabs · © 2026 NasLabs</footer>
+  return <footer className="system-page-footer">Drive by NasLabs · © 2026 NasLabs</footer>
 }
 
 export function AccessDeniedState({ adminOnly = false, onBack }: { adminOnly?: boolean; onBack?: () => void }) {

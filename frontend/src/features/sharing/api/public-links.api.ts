@@ -1,0 +1,24 @@
+import { shareService } from "@/services/share-service";
+
+export const publicLinksApi = {
+  list: shareService.getPublicLinks,
+  getPublicLinks: shareService.getPublicLinks,
+  get: shareService.getPublicLink,
+  getPublicLink: shareService.getPublicLink,
+  enable: shareService.enablePublicLink,
+  enablePublicLink: shareService.enablePublicLink,
+  disable: shareService.disablePublicLink,
+  disablePublicLink: shareService.disablePublicLink,
+  regenerate: shareService.regeneratePublicLink,
+  regeneratePublicLink: shareService.regeneratePublicLink,
+  update: shareService.updatePublicLink,
+  updatePublicLink: shareService.updatePublicLink,
+  resolve: shareService.resolvePublicShare,
+  resolvePublicShare: shareService.resolvePublicShare,
+  browse: shareService.browsePublicShare,
+  browsePublicShare: shareService.browsePublicShare,
+  preview: shareService.publicPreview,
+  publicPreview: shareService.publicPreview,
+  download: shareService.publicDownload,
+  publicDownload: shareService.publicDownload,
+};

@@ -5,7 +5,7 @@ import { Cloud } from 'lucide-react'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 export function AuthShell({ children }: { children: ReactNode }) {
-  return <main className="auth-page"><div className="auth-theme-corner"><ThemeToggle /></div><div className="auth-frame"><div className="auth-brand"><span className="auth-brand-mark" aria-hidden="true"><Cloud size={17} /></span><div><strong>Cloud</strong><span>by NasLabs</span></div></div>{children}<footer className="auth-footer"><span>Cloud by NasLabs</span><span>Private cloud storage · © 2026 NasLabs</span></footer></div></main>
+  return <main className="auth-page"><div className="auth-theme-corner"><ThemeToggle /></div><div className="auth-frame"><div className="auth-brand"><span className="auth-brand-mark" aria-hidden="true"><Cloud size={17} /></span><div><strong>Drive</strong><span>by NasLabs</span></div></div>{children}<footer className="auth-footer"><span>Drive by NasLabs</span><span>Private file storage · © 2026 NasLabs</span></footer></div></main>
 }
 
 export function AuthPanel({ children, eyebrow }: { children: ReactNode; eyebrow?: string }) {

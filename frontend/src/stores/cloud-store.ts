@@ -2,7 +2,7 @@
 
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useThemePreference } from "@/stores/theme-store";
-import { cloudService } from "@/services/cloud-service";
+import { filesApi as cloudService } from "@/features/files/api/files.api";
 import { useAuthStore } from "@/stores/auth-store";
 import type { CloudActivity, CloudItem, StorageApiSummary, UploadTask } from "@/types/cloud";
 
@@ -17,7 +17,8 @@ export function CloudStoreProvider({ children }: { children: React.ReactNode }) 
 export function useCloudStore(folderId?: string | null) {
   const store = useContext(CloudContext);
   if (!store) throw new Error("useCloudStore must be used inside CloudStoreProvider.");
-  useEffect(() => { if (folderId !== undefined) void store.setFolder(folderId); }, [folderId, store.setFolder]);
+  const { setFolder } = store;
+  useEffect(() => { if (folderId !== undefined) void setFolder(folderId); }, [folderId, setFolder]);
   return store;
 }
 
@@ -55,14 +56,22 @@ function useCloudStoreValue() {
     });
     const results = await Promise.allSettled(requests);
     const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
-    if (failure) setError(failure.reason instanceof Error ? failure.reason.message : "Unable to load Cloud data.");
+    if (failure) setError(failure.reason instanceof Error ? failure.reason.message : "Unable to load Drive data.");
   }, [folderId, userId]);
 
+  // The store resets and refreshes when the authenticated account changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!userId) { setItems([]); setRecentItems([]); setStarredItems([]); setTrashItems([]); setActivities([]); setStorageSummary(null); setLoading(false); return; }
     setLoading(true);
     void refresh().finally(() => setLoading(false));
   }, [refresh, userId]);
+
+  useEffect(() => {
+    const recover = () => { void refresh(); };
+    window.addEventListener('drive:online', recover);
+    return () => window.removeEventListener('drive:online', recover);
+  }, [refresh]);
 
   const run = useCallback(async (operation: () => Promise<void>, domains: Array<"browser" | "storage" | "trash" | "recent" | "starred" | "activity">) => {
     setError("");
@@ -84,6 +93,11 @@ function useCloudStoreValue() {
   const moveToTrash = useCallback((id: string) => { const item = findItem(id); return item ? run(() => cloudService.trash(item), ["browser", "storage", "trash", "recent", "starred", "activity"]) : Promise.resolve(false); }, [findItem, run]);
   const restore = useCallback((id: string) => { const item = findItem(id); return item ? run(() => cloudService.restore(item), ["browser", "storage", "trash", "recent", "starred", "activity"]) : Promise.resolve(false); }, [findItem, run]);
   const deletePermanently = useCallback((id: string) => { const item = findItem(id); return item ? run(() => cloudService.permanent(item), ["browser", "storage", "trash", "recent", "starred", "activity"]) : Promise.resolve(false); }, [findItem, run]);
+  const bulkStar = useCallback((ids: string[], starred: boolean) => run(async () => { await Promise.all(ids.map(id => { const item = findItem(id); return item ? cloudService.star(item, starred) : Promise.resolve(); })); }, ["browser", "starred", "recent", "activity"]), [findItem, run]);
+  const bulkTrash = useCallback((ids: string[]) => run(async () => { await Promise.all(ids.map(id => { const item = findItem(id); return item ? cloudService.trash(item) : Promise.resolve(); })); }, ["browser", "storage", "trash", "recent", "starred", "activity"]), [findItem, run]);
+  const bulkRestore = useCallback((ids: string[]) => run(async () => { await Promise.all(ids.map(id => { const item = findItem(id); return item ? cloudService.restore(item) : Promise.resolve(); })); }, ["browser", "storage", "trash", "recent", "starred", "activity"]), [findItem, run]);
+  const bulkDeletePermanently = useCallback((ids: string[]) => run(async () => { await Promise.all(ids.map(id => { const item = findItem(id); return item ? cloudService.permanent(item) : Promise.resolve(); })); }, ["browser", "storage", "trash", "recent", "starred", "activity"]), [findItem, run]);
+  const bulkDownload = useCallback((ids: string[]) => { ids.map(findItem).filter((item): item is CloudItem => item?.kind === "file").forEach(item => { void cloudService.download(item); }); }, [findItem]);
   const emptyTrash = useCallback(() => run(() => cloudService.emptyTrash(), ["browser", "storage", "trash", "recent", "starred", "activity"]), [run]);
 
   const upload = useCallback((file: File, targetFolderId: string | null) => {
@@ -137,6 +151,6 @@ function useCloudStoreValue() {
     catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to search this folder."); setSearchItems([]); }
   }, [folderId, userId]);
   const addActivity = useCallback(() => undefined, []);
-  const copy = useCallback((_id: string, _parentId: string | null) => { setError("Copying files is not available in the backend yet."); return false; }, []);
-  return { items, activeItems, searchItems, search, recentItems, starredItems, trashItems, activities, loading, error, clearError: () => setError(""), theme, setTheme, view, setView, toggleStar, createFolder, rename, move, copy, moveToTrash, restore, deletePermanently, emptyTrash, upload, uploadTasks, cancelUpload, retryUpload, resolveUpload, dismissUpload, storage, addActivity, refresh, setFolder };
+  const copy = useCallback(() => { setError("Copying files is not available in the backend yet."); return false; }, []);
+  return { items, activeItems, searchItems, search, recentItems, starredItems, trashItems, activities, loading, error, clearError: () => setError(""), theme, setTheme, view, setView, toggleStar, createFolder, rename, move, copy, moveToTrash, restore, deletePermanently, bulkStar, bulkTrash, bulkRestore, bulkDeletePermanently, bulkDownload, emptyTrash, upload, uploadTasks, cancelUpload, retryUpload, resolveUpload, dismissUpload, storage, addActivity, refresh, setFolder };
 }

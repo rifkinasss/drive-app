@@ -1,12 +1,17 @@
 <?php
 
 return [
+    'push' => [
+        'vapid_subject' => env('VAPID_SUBJECT', ''),
+        'vapid_public_key' => env('VAPID_PUBLIC_KEY', ''),
+        'vapid_private_key' => env('VAPID_PRIVATE_KEY', ''),
+    ],
     'groups' => ['general', 'access', 'storage', 'security', 'sharing', 'maintenance', 'advanced'],
     'settings' => [
-        'general.instance_name' => ['group' => 'general', 'api' => 'instanceName', 'type' => 'string', 'default' => 'Cloud by NasLabs', 'rules' => ['required', 'string', 'max:120']],
+        'general.instance_name' => ['group' => 'general', 'api' => 'instanceName', 'type' => 'string', 'default' => 'Drive by NasLabs', 'rules' => ['required', 'string', 'max:120']],
         'general.brand_name' => ['group' => 'general', 'api' => 'brandName', 'type' => 'string', 'default' => 'NasLabs', 'rules' => ['required', 'string', 'max:120']],
         'general.app_url' => ['group' => 'general', 'api' => 'appUrl', 'type' => 'string', 'default' => config('app.frontend_url'), 'rules' => ['required', 'url', 'max:2048']],
-        'general.description' => ['group' => 'general', 'api' => 'description', 'type' => 'string', 'default' => 'Private cloud storage', 'rules' => ['required', 'string', 'max:500']],
+        'general.description' => ['group' => 'general', 'api' => 'description', 'type' => 'string', 'default' => 'Private file storage', 'rules' => ['required', 'string', 'max:500']],
         'general.language' => ['group' => 'general', 'api' => 'language', 'type' => 'string', 'default' => 'en', 'rules' => ['required', 'in:en,id']],
         'general.timezone' => ['group' => 'general', 'api' => 'timezone', 'type' => 'string', 'default' => 'UTC', 'rules' => ['required', 'timezone']],
         'general.date_format' => ['group' => 'general', 'api' => 'dateFormat', 'type' => 'string', 'default' => 'Y-m-d', 'rules' => ['required', 'string', 'max:40']],
@@ -30,7 +35,7 @@ return [
         'sharing.internal_enabled' => ['group' => 'sharing', 'api' => 'internalEnabled', 'type' => 'boolean', 'default' => true, 'rules' => ['boolean']],
         'sharing.public_links_enabled' => ['group' => 'sharing', 'api' => 'publicLinksEnabled', 'type' => 'boolean', 'default' => true, 'rules' => ['boolean']],
         'maintenance.enabled' => ['group' => 'maintenance', 'api' => 'enabled', 'type' => 'boolean', 'default' => false, 'rules' => ['boolean']],
-        'maintenance.message' => ['group' => 'maintenance', 'api' => 'message', 'type' => 'string', 'default' => 'Cloud is temporarily unavailable for maintenance.', 'rules' => ['required', 'string', 'max:500']],
+        'maintenance.message' => ['group' => 'maintenance', 'api' => 'message', 'type' => 'string', 'default' => 'Drive is temporarily unavailable for maintenance.', 'rules' => ['required', 'string', 'max:500']],
         'advanced.debug_ui' => ['group' => 'advanced', 'api' => 'debugUi', 'type' => 'boolean', 'default' => false, 'rules' => ['boolean']],
         'advanced.experimental_features' => ['group' => 'advanced', 'api' => 'experimentalFeatures', 'type' => 'json', 'default' => [], 'rules' => ['array', 'max:100'], 'writable' => false],
     ],

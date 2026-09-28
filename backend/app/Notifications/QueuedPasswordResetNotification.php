@@ -21,8 +21,8 @@ class QueuedPasswordResetNotification extends ResetPassword implements ShouldBeE
     public function toMail($notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Reset your Cloud by NasLabs password')
-            ->greeting('Cloud by NasLabs')
+            ->subject('Reset your Drive by NasLabs password')
+            ->greeting('Drive by NasLabs')
             ->line('We received a password reset request for your account.')
             ->action('Reset password', $this->resetUrl($notifiable))
             ->line('This password reset link expires in '.config('auth.passwords.'.config('auth.defaults.passwords').'.expire').' minutes.')

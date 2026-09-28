@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#F8FAFC">
-    <title>Cloud by NasLabs API Gateway</title>
+    <title>Drive by NasLabs API Gateway</title>
     <style>
         :root { --blue:#3B52E2; --ink:#0F172A; --secondary:#1E293B; --muted:#64748B; --line:#DCE3EF; --surface:#fff; --page:#F8FAFC; }
         * { box-sizing:border-box; }
@@ -51,9 +51,9 @@
 <body>
 <div class="shell">
     <header class="topbar">
-        <a class="brand" href="{{ route('backend.home') }}" aria-label="Cloud by NasLabs API Gateway home">
+        <a class="brand" href="{{ route('backend.home') }}" aria-label="Drive by NasLabs API Gateway home">
             <span class="brand-icon" aria-hidden="true"><svg width="25" height="25" viewBox="0 0 24 24" fill="none"><path d="M7.2 18.2h9.25a4.05 4.05 0 0 0 .55-8.06 5.45 5.45 0 0 0-10.46-1.2 4.66 4.66 0 0 0 .66 9.26Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="brand-name">Cloud <small>by NasLabs</small></span>
+            <span class="brand-name">Drive <small>by NasLabs</small></span>
         </a>
         <nav class="nav" aria-label="Backend resources">
             <span class="status"><span class="dot" aria-hidden="true"></span>Operational</span>
@@ -67,8 +67,8 @@
         <div class="hero-grid">
             <section aria-labelledby="page-title">
                 <span class="eyebrow"><span class="dot" aria-hidden="true"></span>Backend · REST API</span>
-                <h1 id="page-title">Cloud by NasLabs API</h1>
-                <p class="intro">Private cloud storage backend for secure file management, sharing, storage, and administration. The backend powering Cloud by NasLabs.</p>
+                <h1 id="page-title">Drive by NasLabs API</h1>
+                <p class="intro">Private file storage backend for file management, sharing, storage, and administration. The backend powering Drive by NasLabs.</p>
                 <div class="actions">
                     @if (config('docs.enabled'))
                         <a class="button button-primary" href="{{ route('docs.landing') }}">Explore Documentation <span aria-hidden="true">→</span></a>
@@ -86,7 +86,7 @@
                     <div class="panel-head"><strong>API Overview</strong><span>STATUS / READY</span></div>
                     <ul class="info-list">
                         <li><span>API status</span><b class="status"><span class="dot" aria-hidden="true"></span>Operational</b></li>
-                        <li><span>API version</span><b>v{{ config('docs.version', '1.0.0') }}</b></li>
+                    <li><span>API version</span><b>v{{ config('docs.version', '2.0.0') }}</b></li>
                         <li><span>Framework</span><b>Laravel</b></li>
                         <li><span>Database</span><b>PostgreSQL</b></li>
                         <li><span>Authentication</span><b>Sanctum Session</b></li>
@@ -95,7 +95,7 @@
                 </section>
                 <div class="auth-note">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 1 1 8 0v3m-4 5v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                    <p><strong>Session-based authentication</strong>This API primarily serves the first-party Cloud app using Laravel Sanctum cookies.</p>
+                    <p><strong>Session-based authentication</strong>This API primarily serves the first-party Drive app using Laravel Sanctum cookies.</p>
                 </div>
             </aside>
         </div>
@@ -105,7 +105,7 @@
             @endforeach
         </section>
     </main>
-    <footer><strong>Cloud by NasLabs</strong><span>Private cloud infrastructure by NasLabs · © {{ date('Y') }} NasLabs · API v{{ config('docs.version', '1.0.0') }}</span></footer>
+    <footer><strong>Drive by NasLabs</strong><span>Private file infrastructure by NasLabs · © {{ date('Y') }} NasLabs · API v{{ config('docs.version', '2.0.0') }}</span></footer>
 </div>
 </body>
 </html>

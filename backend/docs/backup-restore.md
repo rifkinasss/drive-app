@@ -7,7 +7,7 @@ This is an operations procedure, not an application backup engine. Backup sets c
 Recover these assets together:
 
 - PostgreSQL schema and data: users/password hashes, folders/files metadata, Trash/batches, internal shares and public links, invitations and verification/reset tokens, activity, notifications, settings, sessions/cache, and database queue tables (`jobs`, `failed_jobs`, `job_batches`). Review queue rows before starting any worker; never replay them blindly after recovery.
-- The private Cloud storage root configured by `CLOUD_STORAGE_ROOT` (legacy alias `CLOUD_FILESYSTEM_ROOT`; default `storage/app/cloud`). Keep the relative object namespace unchanged. Do not copy through the public API.
+- The private Drive storage root configured by `CLOUD_STORAGE_ROOT` (legacy alias `CLOUD_FILESYSTEM_ROOT`; default `storage/app/cloud`). Keep the relative object namespace unchanged. Do not copy through the public API.
 - The exact `APP_KEY`, database/mail configuration, service URLs, storage-root configuration, compatible source revision and lockfiles. Keep secrets in a password/secret manager or encrypted operations vault, separately from the ordinary database/storage backup. The manifest may contain only an APP_KEY fingerprint, never the key.
 
 Upload staging (`tmp/`) is transient and excluded. New committed-delete staging (`tmp-delete-committed/`) is excluded because it represents bytes whose database deletion committed. Pre-commit (`tmp-delete-pending/`) and legacy ambiguous `tmp-delete/` objects require manual recovery review and should be preserved separately if present. No quarantine path is currently configured. Do not run Trash/staging cleanup during a backup snapshot.

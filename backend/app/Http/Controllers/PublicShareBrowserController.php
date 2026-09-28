@@ -11,7 +11,7 @@ class PublicShareBrowserController
 {
     public function __invoke(Request $request, string $token, PublicShareAccessService $access): JsonResponse
     {
-        $context = $access->folder($token, $request->input('folderId'));
+        $context = $access->folder($token, $request->input('folderId'), $request->header('X-Share-Password'));
         $root = $context['item'];
         $current = $context['currentFolder'];
         $sort = in_array($request->input('sort', 'name'), ['name', 'modified', 'created', 'size'], true) ? $request->input('sort', 'name') : 'name';
@@ -34,6 +34,7 @@ class PublicShareBrowserController
             'folders' => $folders->map(fn ($folder) => $this->folder($folder, $current->uuid))->values()->all(),
             'files' => $files->map(fn ($file) => ['id' => $file->uuid, 'name' => $file->original_name, 'mimeType' => $file->mime_type, 'sizeBytes' => $file->size_bytes, 'updatedAt' => $file->updated_at?->utc()->toISOString()])->values()->all(),
             'permission' => 'viewer',
+            'allowDownload' => (bool) $context['link']->allow_download,
             'meta' => ['sort' => $sort, 'direction' => $direction, 'search' => $search === '' ? null : $search],
         ]);
     }

@@ -10,7 +10,7 @@ class ApiDocumentationTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('Cloud by NasLabs API')
+            ->assertSee('Drive by NasLabs API')
             ->assertSee('Operational')
             ->assertSee('Explore Documentation')
             ->assertSee('Sanctum Session');
@@ -20,7 +20,7 @@ class ApiDocumentationTest extends TestCase
     {
         $this->get('/docs')
             ->assertOk()
-            ->assertSee('Cloud by NasLabs API')
+            ->assertSee('Drive by NasLabs API')
             ->assertSee('/docs/api');
     }
 
@@ -28,6 +28,6 @@ class ApiDocumentationTest extends TestCase
     {
         $this->assertSame('/docs/api.json', parse_url(route('scramble.docs.document'), PHP_URL_PATH));
         $this->assertTrue((bool) config('docs.enabled'));
-        $this->assertSame('1.0.0', config('docs.version'));
+        $this->assertSame('2.0.0', config('docs.version'));
     }
 }

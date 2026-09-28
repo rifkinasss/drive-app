@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class PublicShareService
@@ -68,12 +69,33 @@ class PublicShareService
         });
     }
 
+    public function configure(User $owner, File|Folder $item, array $options): array
+    {
+        [$link, $url] = $this->enable($owner, $item);
+        $attributes = [];
+        if (array_key_exists('expiresAt', $options)) {
+            $attributes['expires_at'] = $options['expiresAt'];
+        }
+        if (array_key_exists('password', $options)) {
+            $attributes['password_hash'] = filled($options['password']) ? Hash::make($options['password']) : null;
+        }
+        if (array_key_exists('allowDownload', $options)) {
+            $attributes['allow_download'] = (bool) $options['allowDownload'];
+        }
+        if ($attributes !== []) {
+            $link->update($attributes);
+            $link = $link->fresh();
+        }
+
+        return [$link, $url];
+    }
+
     public function status(File|Folder $item): ?PublicShareLink
     {
         return $this->link($item);
     }
 
-    public function resolve(string $rawToken): array
+    public function resolve(string $rawToken, ?string $password = null): array
     {
         if (! $this->settings->getBool('sharing.public_links_enabled')) {
             throw new PublicShareUnavailableException;
@@ -81,6 +103,9 @@ class PublicShareService
         $link = PublicShareLink::query()->where('token_hash', $this->tokens->hash($rawToken))->where('enabled', true)->first();
         if ($link === null || ($link->expires_at !== null && $link->expires_at->isPast())) {
             throw new PublicShareUnavailableException;
+        }
+        if (filled($link->password_hash) && (! filled($password) || ! Hash::check($password, $link->password_hash))) {
+            abort(401, 'A password is required to access this shared item.');
         }
         $item = $link->shareable_type === 'file' ? File::query()->where('owner_id', $link->owner_id)->find($link->shareable_id) : Folder::query()->where('owner_id', $link->owner_id)->find($link->shareable_id);
         if ($item === null || $item->trashed_at !== null || ! User::query()->whereKey($link->owner_id)->where('status', 'active')->exists()) {

@@ -16,16 +16,16 @@ class ProductionAuthConfigurationTest extends TestCase
         parent::setUp();
 
         config([
-            'cors.allowed_origins' => ['https://cloud.naslabs.my.id'],
+            'cors.allowed_origins' => ['https://drive.naslabs.my.id'],
             'session.domain' => '.naslabs.my.id',
             'session.secure' => true,
-            'sanctum.stateful' => ['cloud.naslabs.my.id'],
+            'sanctum.stateful' => ['drive.naslabs.my.id'],
         ]);
     }
 
     public function test_cors_allows_the_configured_production_frontend_with_credentials(): void
     {
-        $origin = 'https://cloud.naslabs.my.id';
+        $origin = 'https://drive.naslabs.my.id';
 
         $this->assertTrue(config('cors.supports_credentials'));
         $this->assertContains($origin, config('cors.allowed_origins'));
@@ -49,10 +49,10 @@ class ProductionAuthConfigurationTest extends TestCase
 
     public function test_csrf_cookie_endpoint_is_cors_enabled_for_the_production_frontend(): void
     {
-        $response = $this->withHeader('Origin', 'https://cloud.naslabs.my.id')
+        $response = $this->withHeader('Origin', 'https://drive.naslabs.my.id')
             ->get('/sanctum/csrf-cookie')
             ->assertNoContent()
-            ->assertHeader('Access-Control-Allow-Origin', 'https://cloud.naslabs.my.id')
+            ->assertHeader('Access-Control-Allow-Origin', 'https://drive.naslabs.my.id')
             ->assertHeader('Access-Control-Allow-Credentials', 'true');
 
         $cookies = $response->baseResponse->headers->getCookies();
@@ -76,7 +76,7 @@ class ProductionAuthConfigurationTest extends TestCase
         $this->assertTrue(config('session.secure'));
         $this->assertTrue(config('session.http_only'));
         $this->assertSame('lax', config('session.same_site'));
-        $this->assertContains('cloud.naslabs.my.id', config('sanctum.stateful'));
+        $this->assertContains('drive.naslabs.my.id', config('sanctum.stateful'));
         $this->assertGreaterThan(0, config('auth.passwords.users.throttle'));
 
         foreach (config('sanctum.stateful') as $domain) {
@@ -89,12 +89,12 @@ class ProductionAuthConfigurationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->withHeader('Origin', 'https://cloud.naslabs.my.id')
+        $this->withHeader('Origin', 'https://drive.naslabs.my.id')
             ->get('/sanctum/csrf-cookie')
             ->assertNoContent();
         $originalSessionId = app('session')->driver()->getId();
 
-        $this->withHeader('Origin', 'https://cloud.naslabs.my.id')->postJson('/api/auth/login', [
+        $this->withHeader('Origin', 'https://drive.naslabs.my.id')->postJson('/api/auth/login', [
             'email' => $user->email,
             'password' => 'password',
         ])->assertOk();

@@ -84,6 +84,27 @@ class FolderTest extends TestCase
         $this->getJson('/api/folders/'.$folderId)->assertNotFound();
     }
 
+    public function test_folder_details_include_location_and_accessible_metadata(): void
+    {
+        $user = User::factory()->create();
+        $parent = Folder::factory()->create(['owner_id' => $user->id, 'name' => 'Projects']);
+        $folder = Folder::factory()->create(['owner_id' => $user->id, 'parent_id' => $parent->id, 'name' => 'Reports', 'is_starred' => true]);
+        $this->actingAs($user, 'sanctum');
+
+        $this->getJson('/api/folders/'.$folder->uuid.'/details')
+            ->assertOk()
+            ->assertJsonPath('data.type', 'folder')
+            ->assertJsonPath('data.name', 'Reports')
+            ->assertJsonPath('data.owner.id', $user->id)
+            ->assertJsonPath('data.location.id', $parent->uuid)
+            ->assertJsonPath('data.location.name', 'Projects')
+            ->assertJsonPath('data.sizeBytes', null)
+            ->assertJsonPath('data.starred', true)
+            ->assertJsonPath('data.shared', false)
+            ->assertJsonMissingPath('data.owner_id')
+            ->assertJsonMissingPath('data.parent_id');
+    }
+
     public function test_user_can_rename_and_move_folder_to_root(): void
     {
         $user = User::factory()->create();

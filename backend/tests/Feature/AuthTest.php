@@ -33,6 +33,7 @@ class AuthTest extends TestCase
         $this->postJson('/api/auth/login', [
             'email' => $user->email,
             'password' => 'password',
+            'remember' => false,
         ])->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('message', 'Signed in successfully.')
@@ -43,6 +44,24 @@ class AuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.user.id', $user->id)
             ->assertJsonPath('data.user.emailVerifiedAt', null);
+    }
+
+    public function test_remembered_login_queues_a_persistent_cookie_with_the_configured_duration(): void
+    {
+        $user = User::factory()->create(['email' => 'remembered@example.test']);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => $user->email,
+            'password' => 'password',
+            'remember' => true,
+        ])->assertOk();
+
+        $rememberCookie = collect($response->baseResponse->headers->getCookies())
+            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'));
+
+        $this->assertNotNull($rememberCookie);
+        $this->assertSame(43200 * 60, $rememberCookie->getMaxAge());
+        $this->getJson('/api/auth/user')->assertOk();
     }
 
     public function test_invalid_login_is_generic_and_returns_unauthorized(): void

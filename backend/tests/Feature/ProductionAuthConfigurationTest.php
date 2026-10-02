@@ -85,6 +85,13 @@ class ProductionAuthConfigurationTest extends TestCase
         }
     }
 
+    public function test_session_persistence_policy_is_configured_for_normal_and_remembered_logins(): void
+    {
+        $this->assertSame(10080, config('session.lifetime'));
+        $this->assertFalse(config('session.expire_on_close'));
+        $this->assertSame(43200, config('auth.guards.web.remember'));
+    }
+
     public function test_login_regenerates_the_session_identifier(): void
     {
         $user = User::factory()->create();

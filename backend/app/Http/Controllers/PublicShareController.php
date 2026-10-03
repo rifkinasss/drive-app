@@ -15,6 +15,7 @@ class PublicShareController
     public function show(Request $request, string $token, PublicShareAccessService $access): JsonResponse
     {
         $context = $access->root($token, $request->header('X-Share-Password'));
+        app(\App\Services\PublicShareService::class)->recordView($context['link']);
 
         return ApiResponse::success((new PublicSharedItemResource((object) ['item' => $context['item'], 'type' => $context['type'], 'owner' => $context['link']->owner, 'link' => $context['link']]))->resolve(request()));
     }
@@ -33,8 +34,10 @@ class PublicShareController
         abort_if($context['type'] !== 'file', 404);
 
         abort_unless($context['link']->allow_download, 403, 'Downloads are disabled for this link.');
+        $response = $stream->download($context['item'], $request);
+        app(\App\Services\PublicShareService::class)->recordDownload($context['link']);
 
-        return $stream->download($context['item'], $request);
+        return $response;
     }
 
     public function filePreview(Request $request, string $token, File $file, FileStreamService $stream, PublicShareAccessService $access)
@@ -48,7 +51,9 @@ class PublicShareController
     {
         $context = $access->file($token, $file, $request->header('X-Share-Password'));
         abort_unless($context['link']->allow_download, 403, 'Downloads are disabled for this link.');
+        $response = $stream->download($file, $request);
+        app(\App\Services\PublicShareService::class)->recordDownload($context['link']);
 
-        return $stream->download($file, $request);
+        return $response;
     }
 }

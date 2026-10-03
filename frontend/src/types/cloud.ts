@@ -46,6 +46,7 @@ export interface InternalShare {
 
 export interface PublicShareLink {
   id: string;
+  linkId?: string | null;
   itemId: string;
   itemType: CloudItemKind;
   ownerId: string;
@@ -57,6 +58,10 @@ export interface PublicShareLink {
   expiresAt?: string | null;
   passwordProtected?: boolean;
   allowDownload?: boolean;
+  views?: number;
+  downloads?: number;
+  lastAccessedAt?: string | null;
+  status?: "active" | "expired" | "revoked";
   sharedItem?: CloudItem;
 }
 
@@ -136,6 +141,7 @@ export interface CloudActivity {
   location: string;
   timestamp: string;
   itemType?: CloudItemKind;
+  actorName?: string;
   previousName?: string;
   targetLocation?: string;
   metadata?: string;
@@ -159,7 +165,13 @@ export interface StorageApiSummary {
   usedBytes: number;
   availableBytes: number;
   trashBytes: number;
+  trashCount: number;
   usagePercentage: number;
   categories: Record<string, number>;
   largestFiles: CloudItem[];
+  cleanup: StorageCleanupSummary;
 }
+
+export type StorageCleanupFile = CloudItem;
+export interface StorageDuplicateGroup { checksum: string; sizeBytes: number; fileCount: number; reclaimableBytes: number; files: StorageCleanupFile[] }
+export interface StorageCleanupSummary { oldDays: number; largeMinBytes: number; largeCount: number; largeBytes: number; oldCount: number; oldBytes: number; largeFiles: StorageCleanupFile[]; oldFiles: StorageCleanupFile[]; duplicateGroups: StorageDuplicateGroup[] }

@@ -75,7 +75,7 @@ function useCloudStoreValue() {
   }, [refresh]);
 
   const activeItems = items;
-  const storage = useMemo(() => { const total = Number(storageSummary?.quotaBytes ?? 0); const used = Number(storageSummary?.usedBytes ?? 0); return { total, used, available: Number(storageSummary?.availableBytes ?? 0), trash: Number(storageSummary?.trashBytes ?? 0), percentage: percentageOf(used, total), categories: storageSummary?.categories ?? {}, largestFiles: storageSummary?.largestFiles ?? [] }; }, [storageSummary]);
+  const storage = useMemo(() => { const total = Number(storageSummary?.quotaBytes ?? 0); const used = Number(storageSummary?.usedBytes ?? 0); return { total, used, available: Number(storageSummary?.availableBytes ?? 0), trash: Number(storageSummary?.trashBytes ?? 0), trashCount: Number(storageSummary?.trashCount ?? 0), percentage: percentageOf(used, total), categories: storageSummary?.categories ?? {}, largestFiles: storageSummary?.largestFiles ?? [], cleanup: storageSummary?.cleanup ?? { oldDays: 180, largeMinBytes: 100 * 1024 * 1024, largeCount: 0, largeBytes: 0, oldCount: 0, oldBytes: 0, largeFiles: [], oldFiles: [], duplicateGroups: [] } }; }, [storageSummary]);
 
   const toggleStar = useCallback((id: string) => {
     const item = [...items, ...recentItems, ...starredItems].find((entry) => entry.id === id);

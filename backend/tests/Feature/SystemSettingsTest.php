@@ -91,6 +91,9 @@ class SystemSettingsTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/browser')->assertOk();
+
         $this->actingAs($admin, 'sanctum');
         $this->patchJson('/api/admin/settings/maintenance', ['enabled' => true, 'message' => 'Maintenance window.'])->assertOk();
 
@@ -100,5 +103,24 @@ class SystemSettingsTest extends TestCase
             ->assertJsonPath('message', 'Maintenance window.');
         $this->actingAs($admin, 'sanctum')->getJson('/api/admin/settings')->assertOk();
         $this->getJson('/api/health')->assertOk()->assertJsonPath('data.maintenance', true);
+
+        $this->app['auth']->guard('sanctum')->forgetUser();
+        $this->getJson('/api/browser')->assertUnauthorized();
+        $this->getJson('/api/public/shares/missing-token')->assertStatus(503)->assertJsonPath('message', 'Maintenance window.');
+        $this->getJson('/api/public/file-requests/missing-token')->assertStatus(503)->assertJsonPath('message', 'Maintenance window.');
+    }
+
+    public function test_debug_ui_is_read_only_and_advanced_settings_do_not_expose_secrets(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin, 'sanctum');
+
+        $this->patchJson('/api/admin/settings/advanced', ['debugUi' => true])->assertUnprocessable();
+        $this->getJson('/api/admin/settings/advanced')
+            ->assertOk()
+            ->assertJsonPath('data.settings.debugUi', false)
+            ->assertJsonPath('data.settings.experimentalFeatures', [])
+            ->assertJsonMissingPath('data.settings.appKey')
+            ->assertJsonMissingPath('data.settings.databasePassword');
     }
 }

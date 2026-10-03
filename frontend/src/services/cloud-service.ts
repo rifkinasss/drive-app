@@ -1,5 +1,5 @@
 import { api, apiBlob, apiBaseUrl, ApiError, csrfCookie } from "@/lib/api/client";
-import type { BrowserResponse, CloudActivity, CloudFileType, CloudItem, StorageApiSummary } from "@/types/cloud";
+import type { BrowserResponse, CloudActivity, CloudFileType, CloudItem, StorageApiSummary, StorageCleanupSummary } from "@/types/cloud";
 
 type ApiItem = {
   id: string;
@@ -14,6 +14,7 @@ type ApiItem = {
   createdAt: string;
   updatedAt: string;
 };
+type RawCleanup = { oldDays: number; largeMinBytes: number; largeCount: number; largeBytes: number; oldCount: number; oldBytes: number; largeFiles: ApiItem[]; oldFiles: ApiItem[]; duplicateGroups: Array<{ checksum: string; sizeBytes: number; fileCount: number; reclaimableBytes: number; files: ApiItem[] }> };
 
 export interface CloudDetails {
   id: string;
@@ -149,15 +150,17 @@ export const cloudService = {
     const response = await api.get<{ items: ApiItem[] }>("/api/starred");
     return mapCollection(response.items, ownerId);
   },
-  async getStorage(ownerId: string): Promise<StorageApiSummary> { const response = await api.get<Omit<StorageApiSummary, "largestFiles"> & { largestFiles: Array<ApiItem & { trashedAt?: string | null }> }>("/api/storage"); return { ...response, largestFiles: response.largestFiles.map(file => toCloudItem({ ...file, type: "file" }, ownerId, file.folderId ?? null)) }; },
+  async getStorage(ownerId: string): Promise<StorageApiSummary> { const response = await api.get<Omit<StorageApiSummary, "largestFiles" | "cleanup"> & { largestFiles: Array<ApiItem & { trashedAt?: string | null }>; cleanup: RawCleanup }>("/api/storage"); const map = (file: ApiItem) => toCloudItem(file, ownerId, file.folderId ?? null); const cleanup: StorageCleanupSummary = { ...response.cleanup, largeFiles: response.cleanup.largeFiles.map(map), oldFiles: response.cleanup.oldFiles.map(map), duplicateGroups: response.cleanup.duplicateGroups.map(group => ({ ...group, files: group.files.map(map) })) }; return { ...response, largestFiles: response.largestFiles.map(file => toCloudItem({ ...file, type: "file" }, ownerId, file.folderId ?? null)), cleanup }; },
   async getTrash(ownerId: string): Promise<CloudItem[]> {
     const entries = await api.get<Array<{ id: string; type: "file" | "folder"; name: string; sizeBytes: number | null; trashedAt: string; originalLocation: Array<{ id: string; name: string }> }>>("/api/trash");
     return entries.map((entry) => ({ id: entry.id, ownerId, name: entry.name, kind: entry.type, fileType: "other", mimeType: entry.type === "folder" ? "inode/directory" : "application/octet-stream", extension: "", size: Number(entry.sizeBytes ?? 0), parentId: null, path: entry.originalLocation.map((part) => part.name).join(" / ") || "My Files", createdAt: entry.trashedAt, updatedAt: entry.trashedAt, accessedAt: entry.trashedAt, starred: false, deletedAt: entry.trashedAt, originalParentId: entry.originalLocation.at(-1)?.id ?? null }));
   },
-  async getActivity(limit = 100): Promise<CloudActivity[]> {
-    const data = await api.get<{ items: Array<{ id: string; action: string; subject: { id?: string; name?: string; type?: string } | null; metadata: Record<string, unknown>; createdAt: string }> }>(`/api/activity?limit=${limit}`);
+  async getActivity(limit = 100, resource?: { type: "file" | "folder"; id: string }): Promise<CloudActivity[]> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (resource) { params.set("resource_type", resource.type); params.set("resource_id", resource.id); }
+    const data = await api.get<{ items: Array<{ id: string; action: string; actor?: { name?: string } | null; subject: { id?: string; name?: string; type?: string } | null; metadata: Record<string, unknown>; createdAt: string }> }>(`/api/activity?${params}`);
     const actionMap: Record<string, CloudActivity["action"]> = { "file.uploaded": "uploaded", "file.renamed": "renamed", "file.moved": "moved", "file.starred": "starred", "file.unstarred": "unstarred", "file.downloaded": "downloaded", "file.trashed": "deleted", "file.restored": "restored", "file.deleted": "permanently-deleted", "folder.created": "created", "folder.renamed": "renamed", "folder.moved": "moved", "folder.starred": "starred", "folder.unstarred": "unstarred", "folder.trashed": "deleted", "folder.restored": "restored", "folder.deleted": "permanently-deleted", "trash.emptied": "emptied-trash", "share.created": "shared", "share.received": "shared", "share.permission_updated": "shared", "share.revoked": "sharing-stopped", "public_link.enabled": "shared", "public_link.disabled": "sharing-stopped", "public_link.regenerated": "shared" };
-    return data.items.map((entry) => ({ id: entry.id, action: actionMap[entry.action] ?? "created", itemName: entry.subject?.name ?? "Drive", itemId: entry.subject?.id, itemType: entry.subject?.type === "folder" ? "folder" : "file", location: "My Files", timestamp: entry.createdAt, previousName: typeof entry.metadata.from === "string" ? entry.metadata.from : undefined, targetLocation: typeof entry.metadata.to === "string" ? entry.metadata.to : undefined, metadata: JSON.stringify(entry.metadata) }));
+    return data.items.map((entry) => ({ id: entry.id, action: actionMap[entry.action] ?? "created", actorName: entry.actor?.name, itemName: entry.subject?.name ?? "Drive", itemId: entry.subject?.id, itemType: entry.subject?.type === "folder" ? "folder" : "file", location: "My Files", timestamp: entry.createdAt, previousName: typeof entry.metadata.from === "string" ? entry.metadata.from : undefined, targetLocation: typeof entry.metadata.to === "string" ? entry.metadata.to : undefined, metadata: JSON.stringify(entry.metadata) }));
   },
   async createFolder(name: string, parentId: string | null): Promise<void> { await api.post("/api/folders", { name, parentId }); },
   async rename(item: CloudItem, name: string): Promise<void> { await api.patch(endpoint(item), { name }); },

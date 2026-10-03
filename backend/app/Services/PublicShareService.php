@@ -95,6 +95,35 @@ class PublicShareService
         return $this->link($item);
     }
 
+    public function recordView(PublicShareLink $link): void
+    {
+        $this->recordAccess($link, 'view_count');
+    }
+
+    public function recordDownload(PublicShareLink $link): void
+    {
+        $this->recordAccess($link, 'download_count');
+    }
+
+    public function analytics(User $owner, PublicShareLink $link): array
+    {
+        abort_unless($link->owner_id === $owner->getKey(), 403);
+
+        return [
+            'views' => (int) $link->view_count,
+            'downloads' => (int) $link->download_count,
+            'lastAccessedAt' => $link->last_accessed_at?->toISOString(),
+            'createdAt' => $link->created_at?->toISOString(),
+            'expiresAt' => $link->expires_at?->toISOString(),
+            'status' => $this->statusFor($link),
+        ];
+    }
+
+    public function statusFor(PublicShareLink $link): string
+    {
+        return ! $link->enabled ? 'revoked' : ($link->expires_at?->isPast() ? 'expired' : 'active');
+    }
+
     public function resolve(string $rawToken, ?string $password = null): array
     {
         if (! $this->settings->getBool('sharing.public_links_enabled')) {
@@ -157,6 +186,14 @@ class PublicShareService
     private function link(File|Folder $item): ?PublicShareLink
     {
         return PublicShareLink::query()->where('shareable_type', $this->type($item))->where('shareable_id', $item->getKey())->first();
+    }
+
+    private function recordAccess(PublicShareLink $link, string $counter): void
+    {
+        PublicShareLink::query()->whereKey($link->getKey())->update([
+            $counter => DB::raw($counter.' + 1'),
+            'last_accessed_at' => now(),
+        ]);
     }
 
     private function type(Model $item): string

@@ -1,11 +1,11 @@
 'use client'
 
-import { Copy, Download, Eye, FolderInput, FolderOpen, Info, Pencil, RotateCcw, Share2, Star, StarOff, Trash2 } from 'lucide-react'
+import { BarChart3, Copy, Download, Eye, FolderInput, FolderOpen, Info, Pencil, RotateCcw, Share2, Star, StarOff, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEffect, useRef } from 'react'
 import type { CloudItem } from '@/types/cloud'
 
-export type FileMenuAction = 'open' | 'show-folder' | 'download' | 'share' | 'star' | 'rename' | 'move' | 'copy' | 'properties' | 'restore' | 'trash' | 'delete'
+export type FileMenuAction = 'open' | 'show-folder' | 'download' | 'share' | 'analytics' | 'star' | 'rename' | 'move' | 'copy' | 'properties' | 'restore' | 'trash' | 'delete'
 export interface FileMenuItem { id: FileMenuAction; label: string; onSelect: () => void; destructive?: boolean; icon?: ReactNode }
 
 export function FileContextMenu({ item, x, y, groups, onClose }: { item: CloudItem; x: number; y: number; groups: FileMenuItem[][]; onClose: () => void }) {
@@ -20,6 +20,7 @@ function iconFor(action: FileMenuAction, label: string) {
   if (action === 'show-folder') return <FolderOpen {...props} />
   if (action === 'download') return <Download {...props} />
   if (action === 'share') return <Share2 {...props} />
+  if (action === 'analytics') return <BarChart3 {...props} />
   if (action === 'star') return label.toLowerCase().includes('unstar') ? <StarOff {...props} /> : <Star {...props} />
   if (action === 'rename') return <Pencil {...props} />
   if (action === 'move') return <FolderInput {...props} />

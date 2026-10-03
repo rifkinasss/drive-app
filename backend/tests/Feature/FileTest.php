@@ -360,6 +360,46 @@ class FileTest extends TestCase
             ->assertJsonPath('data.largestFiles.0.id', $active->uuid);
     }
 
+    public function test_storage_endpoint_reports_owner_cleanup_candidates_without_trash(): void
+    {
+        $user = User::factory()->create(['quota_bytes' => 1_000_000_000, 'used_bytes' => 0]);
+        $other = User::factory()->create();
+        $large = File::factory()->create(['owner_id' => $user->id, 'original_name' => 'large.bin', 'size_bytes' => 100 * 1024 * 1024, 'checksum' => str_repeat('a', 64)]);
+        $old = File::factory()->create(['owner_id' => $user->id, 'original_name' => 'old.pdf', 'size_bytes' => 20, 'updated_at' => now()->subDays(181)]);
+        File::factory()->create(['owner_id' => $user->id, 'original_name' => 'duplicate.pdf', 'size_bytes' => 20, 'checksum' => str_repeat('b', 64)]);
+        File::factory()->create(['owner_id' => $user->id, 'original_name' => 'duplicate-copy.pdf', 'size_bytes' => 20, 'checksum' => str_repeat('b', 64)]);
+        File::factory()->trashed()->create(['owner_id' => $user->id, 'original_name' => 'deleted.pdf', 'size_bytes' => 30]);
+        File::factory()->create(['owner_id' => $other->id, 'original_name' => 'other-large.bin', 'size_bytes' => 200 * 1024 * 1024, 'checksum' => str_repeat('b', 64)]);
+        $this->actingAs($user, 'sanctum');
+
+        $this->getJson('/api/storage')->assertOk()
+            ->assertJsonPath('data.trashCount', 1)
+            ->assertJsonPath('data.cleanup.oldDays', 180)
+            ->assertJsonPath('data.cleanup.largeMinBytes', 104857600)
+            ->assertJsonPath('data.cleanup.largeCount', 1)
+            ->assertJsonPath('data.cleanup.largeBytes', 104857600)
+            ->assertJsonPath('data.cleanup.oldCount', 1)
+            ->assertJsonPath('data.cleanup.oldFiles.0.id', $old->uuid)
+            ->assertJsonPath('data.cleanup.largeFiles.0.id', $large->uuid)
+            ->assertJsonPath('data.cleanup.duplicateGroups.0.fileCount', 2)
+            ->assertJsonPath('data.cleanup.duplicateGroups.0.reclaimableBytes', 20)
+            ->assertJsonCount(2, 'data.cleanup.duplicateGroups.0.files');
+    }
+
+    public function test_storage_cleanup_excludes_shared_with_me_and_trashed_files(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        File::factory()->create(['owner_id' => $other->id, 'size_bytes' => 100 * 1024 * 1024, 'checksum' => str_repeat('c', 64)]);
+        File::factory()->trashed()->create(['owner_id' => $user->id, 'size_bytes' => 100 * 1024 * 1024]);
+        $this->actingAs($user, 'sanctum');
+
+        $this->getJson('/api/storage')->assertOk()
+            ->assertJsonPath('data.cleanup.largeCount', 0)
+            ->assertJsonPath('data.cleanup.oldCount', 0)
+            ->assertJsonCount(0, 'data.cleanup.duplicateGroups');
+    }
+
     public function test_upload_accounting_and_non_storage_mutations(): void
     {
         $user = User::factory()->create(['quota_bytes' => 100, 'used_bytes' => 0]);

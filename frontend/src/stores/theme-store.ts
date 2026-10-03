@@ -27,8 +27,14 @@ function resolvedTheme(theme: ThemePreference) {
       : theme;
 }
 export function applyTheme(theme: ThemePreference) {
-  if (typeof document !== "undefined")
-    document.documentElement.dataset.theme = resolvedTheme(theme);
+  if (typeof document === "undefined") return;
+
+  const activeTheme = resolvedTheme(theme);
+  document.documentElement.dataset.theme = activeTheme;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.removeAttribute("media");
+    meta.setAttribute("content", activeTheme === "dark" ? "#0F172A" : "#F4F7FB");
+  });
 }
 export function initializeTheme() {
   if (initialized || typeof window === "undefined") return;

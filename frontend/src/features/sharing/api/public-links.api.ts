@@ -5,6 +5,7 @@ export const publicLinksApi = {
   getPublicLinks: shareService.getPublicLinks,
   get: shareService.getPublicLink,
   getPublicLink: shareService.getPublicLink,
+  getAnalytics: shareService.getPublicLinkAnalytics,
   enable: shareService.enablePublicLink,
   enablePublicLink: shareService.enablePublicLink,
   disable: shareService.disablePublicLink,

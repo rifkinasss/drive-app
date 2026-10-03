@@ -114,4 +114,34 @@ class ActivityTest extends TestCase
 
         $this->assertSame(1, Activity::query()->where('action', 'file.downloaded')->count());
     }
+
+    public function test_resource_activity_is_scoped_to_subject_and_current_user(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $fileUuid = (string) str()->uuid();
+        $folderUuid = (string) str()->uuid();
+        Activity::create(['user_id' => $owner->id, 'actor_id' => $owner->id, 'action' => 'file.uploaded', 'subject_type' => 'file', 'subject_uuid' => $fileUuid, 'subject_name' => 'Report.txt', 'created_at' => now()->subMinute()]);
+        Activity::create(['user_id' => $owner->id, 'actor_id' => $owner->id, 'action' => 'file.renamed', 'subject_type' => 'file', 'subject_uuid' => $fileUuid, 'subject_name' => 'Final.txt', 'metadata' => ['from' => 'Report.txt', 'to' => 'Final.txt'], 'created_at' => now()]);
+        Activity::create(['user_id' => $owner->id, 'actor_id' => $owner->id, 'action' => 'folder.created', 'subject_type' => 'folder', 'subject_uuid' => $folderUuid, 'subject_name' => 'Projects', 'created_at' => now()]);
+        Activity::create(['user_id' => $other->id, 'actor_id' => $other->id, 'action' => 'file.uploaded', 'subject_type' => 'file', 'subject_uuid' => $fileUuid, 'subject_name' => 'Private.txt', 'created_at' => now()]);
+
+        $this->actingAs($owner, 'sanctum');
+        $this->getJson('/api/activity?resource_type=file&resource_id='.$fileUuid)
+            ->assertOk()
+            ->assertJsonCount(2, 'data.items')
+            ->assertJsonPath('data.items.0.action', 'file.renamed')
+            ->assertJsonPath('data.items.0.actor.name', $owner->name)
+            ->assertJsonMissing(['subject_name' => 'Projects']);
+        $this->getJson('/api/activity?resource_type=folder&resource_id='.$folderUuid)
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items');
+
+        $this->actingAs($other, 'sanctum');
+        $this->getJson('/api/activity?resource_type=file&resource_id='.$fileUuid)
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.subject.name', 'Private.txt');
+        $this->getJson('/api/activity?resource_type=invalid&resource_id='.$fileUuid)->assertUnprocessable();
+    }
 }

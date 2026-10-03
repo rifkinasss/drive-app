@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\AdminOverviewController;
 use App\Http\Controllers\Admin\AdminUserPasswordResetController;
 use App\Http\Controllers\Admin\AdminUserStatusController;
 use App\Http\Controllers\Admin\AdminUserSummaryController;
@@ -102,6 +103,8 @@ Route::middleware(['auth:sanctum', 'active.account', 'available'])
         Route::get('/notification-preferences', [NotificationPreferenceController::class, 'show'])->name('notification-preferences.show');
         Route::patch('/notification-preferences', [NotificationPreferenceController::class, 'update'])->name('notification-preferences.update');
         Route::get('/security/sessions', [SecuritySessionController::class, 'index'])->name('security.sessions.index');
+        Route::delete('/security/sessions/others', [SecuritySessionController::class, 'destroyOthers'])->name('security.sessions.destroy-others');
+        Route::delete('/security/sessions/{session}', [SecuritySessionController::class, 'destroy'])->name('security.sessions.destroy');
         Route::post('/push-subscriptions', [PushSubscriptionController::class, 'store'])->name('push-subscriptions.store');
         Route::delete('/push-subscriptions/current', [PushSubscriptionController::class, 'destroy'])->name('push-subscriptions.destroy');
         Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
@@ -111,6 +114,7 @@ Route::middleware(['auth:sanctum', 'active.account', 'available'])
         Route::get('/shared/with-me', [SharedController::class, 'withMe'])->name('shared.with-me');
         Route::get('/shared/by-me', [SharedController::class, 'byMe'])->name('shared.by-me');
         Route::get('/shared/links', PublicLinkListController::class)->name('shared.links');
+        Route::get('/shared/links/{link}/analytics', [PublicLinkController::class, 'analytics'])->name('shared.links.analytics');
         Route::get('/file-requests', [FileRequestController::class, 'index'])->name('file-requests.index');
         Route::post('/file-requests', [FileRequestController::class, 'store'])->name('file-requests.store');
         Route::patch('/file-requests/{fileRequest}', [FileRequestController::class, 'update'])->name('file-requests.update');
@@ -171,6 +175,10 @@ Route::prefix('admin/users')
         Route::post('/{user}/invitation/regenerate', [UserSetupController::class, 'regenerateInvitation'])->middleware('throttle:mail-resend')->name('admin.users.invitations.regenerate');
         Route::post('/{user}/verification/resend', [UserSetupController::class, 'resendVerification'])->middleware('throttle:mail-resend')->name('admin.users.verification.resend');
     });
+
+Route::get('/admin/overview', AdminOverviewController::class)
+    ->middleware(['auth:sanctum', 'active.account', 'admin'])
+    ->name('admin.overview');
 
 Route::prefix('admin/settings')
     ->middleware(['auth:sanctum', 'active.account', 'admin'])

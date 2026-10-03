@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\File;
+use App\Models\Folder;
 use App\Models\InternalShare;
 use App\Models\User;
 use App\Services\StorageNotificationService;
@@ -68,6 +69,27 @@ class NotificationTest extends TestCase
         $this->assertSame('share.revoked', $notifications[2]->type);
         $this->assertSame('Shared.txt', $notifications[2]->data['itemName']);
         $this->assertNull($notifications[2]->data['target']);
+    }
+
+    public function test_folder_share_creates_a_private_notification_for_the_recipient(): void
+    {
+        $owner = User::factory()->create();
+        $recipient = User::factory()->create();
+        $folder = Folder::factory()->create(['owner_id' => $owner->id, 'name' => 'Design assets']);
+
+        $this->actingAs($owner, 'sanctum')
+            ->postJson('/api/folders/'.$folder->uuid.'/shares', [
+                'recipientId' => $recipient->id,
+                'permission' => 'viewer',
+            ])
+            ->assertCreated();
+
+        $this->actingAs($recipient, 'sanctum')
+            ->getJson('/api/notifications?status=unread')
+            ->assertOk()
+            ->assertJsonPath('data.items.0.type', 'share.received')
+            ->assertJsonPath('data.items.0.data.itemName', 'Design assets')
+            ->assertJsonPath('data.items.0.data.itemType', 'folder');
     }
 
     public function test_read_all_and_filters_are_scoped_to_current_user(): void

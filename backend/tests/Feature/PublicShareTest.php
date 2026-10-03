@@ -8,6 +8,7 @@ use App\Models\Folder;
 use App\Models\PublicShareLink;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -56,6 +57,59 @@ class PublicShareTest extends TestCase
             ->assertJsonMissingPath('data.path');
         $this->get('/api/public/shares/'.$token.'/preview')->assertOk()->assertStreamedContent('public bytes');
         $this->get('/api/public/shares/'.$token.'/download')->assertOk()->assertStreamedContent('public bytes');
+    }
+
+    public function test_successful_public_access_updates_aggregate_share_analytics(): void
+    {
+        $owner = User::factory()->create();
+        $file = $this->storedFile($owner, 'analytics.txt', 'analytics bytes', 'text/plain');
+        $this->actingAs($owner, 'sanctum');
+        $token = basename($this->postJson('/api/files/'.$file->uuid.'/public-link')->json('data.url'));
+
+        $this->getJson('/api/public/shares/'.$token)->assertOk();
+        $this->get('/api/public/shares/'.$token.'/preview')->assertOk();
+        $this->get('/api/public/shares/'.$token.'/download')->assertOk();
+
+        $link = PublicShareLink::query()->firstOrFail();
+        $this->assertSame(1, $link->fresh()->view_count);
+        $this->assertSame(1, $link->fresh()->download_count);
+        $this->assertNotNull($link->fresh()->last_accessed_at);
+        $this->actingAs($owner, 'sanctum');
+        $this->getJson('/api/shared/links/'.$link->uuid.'/analytics')->assertOk()
+            ->assertJsonPath('data.views', 1)
+            ->assertJsonPath('data.downloads', 1)
+            ->assertJsonPath('data.status', 'active');
+    }
+
+    public function test_failed_public_access_does_not_update_analytics_and_owner_access_is_required(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $file = $this->storedFile($owner, 'private-analytics.txt', 'private', 'text/plain');
+        $this->actingAs($owner, 'sanctum');
+        $token = basename($this->postJson('/api/files/'.$file->uuid.'/public-link')->json('data.url'));
+        $link = PublicShareLink::query()->firstOrFail();
+        $link->update(['expires_at' => now()->subMinute()]);
+
+        $this->getJson('/api/public/shares/'.$token)->assertNotFound();
+        $this->assertSame(0, $link->fresh()->view_count);
+        $this->actingAs($other, 'sanctum');
+        $this->getJson('/api/shared/links/'.$link->uuid.'/analytics')->assertForbidden();
+        Auth::forgetGuards();
+        $this->getJson('/api/shared/links/'.$link->uuid.'/analytics')->assertUnauthorized();
+    }
+
+    public function test_public_link_resource_exposes_expired_and_revoked_status_without_exposing_tokens(): void
+    {
+        $owner = User::factory()->create();
+        $file = $this->storedFile($owner, 'status.txt', 'status', 'text/plain');
+        $this->actingAs($owner, 'sanctum');
+        $this->postJson('/api/files/'.$file->uuid.'/public-link')->assertCreated();
+        $link = PublicShareLink::query()->firstOrFail();
+        $link->update(['expires_at' => now()->subMinute()]);
+        $this->getJson('/api/files/'.$file->uuid.'/public-link')->assertOk()->assertJsonPath('data.status', 'expired')->assertJsonPath('data.views', 0);
+        $link->update(['enabled' => false]);
+        $this->getJson('/api/files/'.$file->uuid.'/public-link')->assertOk()->assertJsonPath('data.status', 'revoked')->assertJsonMissingPath('data.token');
     }
 
     public function test_public_link_can_require_password_and_disable_downloads(): void

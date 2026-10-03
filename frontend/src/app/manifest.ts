@@ -5,11 +5,11 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Drive by NasLabs",
     short_name: "Drive",
     description: "Private file storage and sharing by NasLabs",
-    start_url: "/",
+    start_url: "/home",
     scope: "/",
     display: "standalone",
-    background_color: "#F8FAFC",
-    theme_color: "#2563EB",
+    background_color: "#F4F7FB",
+    theme_color: "#F4F7FB",
     icons: [
       {
         src: "/brand/drive-icon-192.png",

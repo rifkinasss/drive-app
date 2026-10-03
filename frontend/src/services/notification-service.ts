@@ -17,26 +17,36 @@ function mapNotification(value: ApiNotification): NotificationItem {
   const item = typeof data.itemName === "string" ? data.itemName : "Drive";
   const title =
     type === "share.received"
-      ? "An item was shared with you"
+      ? "Ada item yang dibagikan"
       : type === "storage.quota_warning"
-        ? "Storage is almost full"
+        ? "Penyimpanan hampir penuh"
         : type === "share.permission_changed"
-          ? "Sharing permission changed"
+          ? "Izin berbagi berubah"
           : type === "share.revoked"
-            ? "Sharing access removed"
-            : "Drive update";
+            ? "Akses berbagi dicabut"
+            : "Pembaruan Drive";
   const message =
     type === "storage.quota_warning"
-      ? `Storage is ${String(data.usagePercentage ?? "")} percent used.`
+      ? `${String(data.usagePercentage ?? "")}% ruang penyimpanan telah digunakan.`
       : `${actor ? `${actor} · ` : ""}${item}`;
-  const targetUrl =
-    data.target &&
-    typeof data.target === "object" &&
-    (data.target as { kind?: string }).kind === "storage"
-      ? "/storage"
-      : type.startsWith("share.") && typeof data.itemId === "string"
-        ? "/shared"
-        : undefined;
+  const target = data.target && typeof data.target === "object"
+    ? data.target as { kind?: string; itemId?: string; itemType?: string }
+    : undefined;
+  const itemId = typeof data.itemId === "string" ? data.itemId : target?.itemId;
+  const itemType = data.itemType === "file" || data.itemType === "folder"
+    ? data.itemType
+    : target?.itemType === "file" || target?.itemType === "folder"
+      ? target.itemType
+      : undefined;
+  const targetUrl = target?.kind === "storage"
+    ? "/storage"
+    : (type === "share.received" || type === "share.permission_changed") && itemId && itemType
+      ? `/shared?resourceId=${encodeURIComponent(itemId)}&resourceType=${itemType}`
+      : type === "share.revoked"
+        ? "/activity"
+        : type === "system"
+          ? "/activity"
+          : undefined;
   const notificationType: NotificationType = type.startsWith("share.")
     ? "sharing"
     : type === "storage.quota_warning"

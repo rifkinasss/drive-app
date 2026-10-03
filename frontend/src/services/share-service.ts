@@ -30,6 +30,7 @@ type ListDto = {
 type PublicLinkDto = {
   type: "file" | "folder";
   id: string;
+  linkId?: string | null;
   name: string;
   enabled: boolean;
   permission: "viewer";
@@ -39,6 +40,18 @@ type PublicLinkDto = {
   expiresAt?: string | null;
   passwordProtected?: boolean;
   allowDownload?: boolean;
+  views?: number;
+  downloads?: number;
+  lastAccessedAt?: string | null;
+  status?: "active" | "expired" | "revoked";
+};
+type SharedBrowserDto = {
+  sharedRoot: { id: string; name: string };
+  currentFolder: { id: string; name: string; parentId: string | null };
+  breadcrumb: Array<{ id: string; name: string }>;
+  folders: Array<{ id: string; name: string; parentId: string | null; createdAt: string | null; updatedAt: string | null }>;
+  files: Array<{ id: string; name: string; extension: string | null; mimeType: string; sizeBytes: number; createdAt: string | null; updatedAt: string | null }>;
+  permission: SharePermission;
 };
 const itemEndpoint = (item: Pick<CloudItem, "id" | "kind">, suffix: string) =>
   `/api/${item.kind === "folder" ? "folders" : "files"}/${encodeURIComponent(item.id)}${suffix}`;
@@ -195,6 +208,47 @@ export const shareService = {
       })),
     );
   },
+  async browseSharedFolder(folderId: string): Promise<{ data: SharedBrowserDto; folders: CloudItem[]; files: CloudItem[] }> {
+    const data = await api.get<SharedBrowserDto>(`/api/shared/folders/${encodeURIComponent(folderId)}/browser`);
+    const path = data.breadcrumb.map((part) => part.name).join(" / ");
+    const folders = data.folders.map((folder) => ({
+      id: folder.id,
+      ownerId: "shared",
+      name: folder.name,
+      kind: "folder" as const,
+      fileType: "other" as const,
+      mimeType: "inode/directory",
+      extension: "",
+      size: 0,
+      parentId: folder.parentId,
+      path,
+      createdAt: folder.createdAt ?? "",
+      updatedAt: folder.updatedAt ?? "",
+      accessedAt: folder.updatedAt ?? folder.createdAt ?? "",
+      starred: false,
+      deletedAt: null,
+      originalParentId: null,
+    }));
+    const files = data.files.map((file) => ({
+      id: file.id,
+      ownerId: "shared",
+      name: file.name,
+      kind: "file" as const,
+      fileType: file.mimeType.startsWith("image/") ? "image" as const : file.mimeType.startsWith("video/") ? "video" as const : file.mimeType.startsWith("audio/") ? "other" as const : file.mimeType.includes("zip") ? "archive" as const : file.mimeType.startsWith("text/") || file.mimeType.includes("pdf") ? "document" as const : "other" as const,
+      mimeType: file.mimeType,
+      extension: file.extension ?? "",
+      size: Number(file.sizeBytes ?? 0),
+      parentId: data.currentFolder.id,
+      path,
+      createdAt: file.createdAt ?? "",
+      updatedAt: file.updatedAt ?? "",
+      accessedAt: file.updatedAt ?? file.createdAt ?? "",
+      starred: false,
+      deletedAt: null,
+      originalParentId: null,
+    }));
+    return { data, folders, files };
+  },
   async getPublicLinks(
     userOrStatus: string = "all",
     maybeStatus?: "active" | "disabled" | "all",
@@ -209,6 +263,7 @@ export const shareService = {
     );
     return response.items.map((link) => ({
       id: link.id,
+      linkId: link.linkId ?? null,
       itemId: link.id,
       itemType: link.type,
       ownerId: "",
@@ -221,6 +276,10 @@ export const shareService = {
       expiresAt: link.expiresAt ?? null,
       passwordProtected: link.passwordProtected ?? false,
       allowDownload: link.allowDownload ?? true,
+      views: link.views ?? 0,
+      downloads: link.downloads ?? 0,
+      lastAccessedAt: link.lastAccessedAt ?? null,
+      status: link.status,
       sharedItem: sharedItem({
         ...link,
         owner: { id: 0, name: "" },
@@ -239,6 +298,7 @@ export const shareService = {
     );
     return {
       id: link.id,
+      linkId: link.linkId ?? null,
       itemId: item.id,
       itemType: item.kind,
       ownerId: "",
@@ -251,7 +311,14 @@ export const shareService = {
       expiresAt: link.expiresAt ?? null,
       passwordProtected: link.passwordProtected ?? false,
       allowDownload: link.allowDownload ?? true,
+      views: link.views ?? 0,
+      downloads: link.downloads ?? 0,
+      lastAccessedAt: link.lastAccessedAt ?? null,
+      status: link.status,
     };
+  },
+  async getPublicLinkAnalytics(id: string): Promise<{ views: number; downloads: number; lastAccessedAt: string | null; createdAt: string | null; expiresAt: string | null; status: 'active' | 'expired' | 'revoked' }> {
+    return api.get(`/api/shared/links/${encodeURIComponent(id)}/analytics`);
   },
   async enablePublicLink(
     item: CloudItem,
@@ -261,6 +328,7 @@ export const shareService = {
     );
     return {
       id: link.id,
+      linkId: link.linkId ?? null,
       itemId: item.id,
       itemType: item.kind,
       ownerId: "",
@@ -273,6 +341,10 @@ export const shareService = {
       expiresAt: link.expiresAt ?? null,
       passwordProtected: link.passwordProtected ?? false,
       allowDownload: link.allowDownload ?? true,
+      views: link.views ?? 0,
+      downloads: link.downloads ?? 0,
+      lastAccessedAt: link.lastAccessedAt ?? null,
+      status: link.status,
     };
   },
   async disablePublicLink(item: CloudItem | string): Promise<void> {
@@ -295,6 +367,7 @@ export const shareService = {
     );
     return {
       id: link.id,
+      linkId: link.linkId ?? null,
       itemId: target.id,
       itemType: target.kind,
       ownerId: "",
@@ -307,6 +380,10 @@ export const shareService = {
       expiresAt: link.expiresAt ?? null,
       passwordProtected: link.passwordProtected ?? false,
       allowDownload: link.allowDownload ?? true,
+      views: link.views ?? 0,
+      downloads: link.downloads ?? 0,
+      lastAccessedAt: link.lastAccessedAt ?? null,
+      status: link.status,
     };
   },
   async updatePublicLink(
@@ -324,6 +401,7 @@ export const shareService = {
     );
     return {
       id: link.id,
+      linkId: link.linkId ?? null,
       itemId: item.id,
       itemType: item.kind,
       ownerId: "",
@@ -336,6 +414,10 @@ export const shareService = {
       expiresAt: link.expiresAt ?? null,
       passwordProtected: link.passwordProtected ?? false,
       allowDownload: link.allowDownload ?? true,
+      views: link.views ?? 0,
+      downloads: link.downloads ?? 0,
+      lastAccessedAt: link.lastAccessedAt ?? null,
+      status: link.status,
     };
   },
   async resolvePublicShare(token: string, password?: string) {

@@ -71,6 +71,38 @@ class SharingTest extends TestCase
         $this->getJson('/api/files/'.$outsideFile->uuid)->assertNotFound();
     }
 
+    public function test_folder_owner_can_manage_access_and_revoked_recipient_loses_inherited_access(): void
+    {
+        $owner = User::factory()->create();
+        $recipient = User::factory()->create();
+        $root = Folder::factory()->create(['owner_id' => $owner->id, 'name' => 'Project']);
+        $child = Folder::factory()->create(['owner_id' => $owner->id, 'parent_id' => $root->id]);
+        $outside = Folder::factory()->create(['owner_id' => $owner->id, 'name' => 'Private']);
+        $file = File::factory()->create(['owner_id' => $owner->id, 'folder_id' => $child->id, 'original_name' => 'notes.txt', 'mime_type' => 'text/plain', 'size_bytes' => 4, 'disk' => 'cloud', 'path' => 'users/'.$owner->id.'/files/'.str()->uuid()]);
+        Storage::disk('cloud')->put($file->path, 'data');
+
+        $this->actingAs($owner, 'sanctum');
+        $this->postJson('/api/folders/'.$root->uuid.'/shares', ['recipientId' => $recipient->id, 'permission' => 'editor'])->assertCreated()->assertJsonPath('data.permission', 'editor');
+        $share = InternalShare::query()->where('shareable_type', 'folder')->where('shareable_id', $root->id)->firstOrFail();
+        $this->getJson('/api/folders/'.$root->uuid.'/shares')->assertOk()->assertJsonPath('data.0.permission', 'owner')->assertJsonPath('data.1.permission', 'editor');
+        $this->patchJson('/api/shares/'.$share->uuid, ['permission' => 'viewer'])->assertOk()->assertJsonPath('data.permission', 'viewer');
+
+        $this->actingAs($recipient, 'sanctum');
+        $this->getJson('/api/shared/folders/'.$root->uuid.'/browser')->assertOk();
+        $this->getJson('/api/files/'.$file->uuid)->assertOk();
+        $this->getJson('/api/folders/'.$root->uuid.'/shares')->assertNotFound();
+
+        $this->actingAs($owner, 'sanctum');
+        $this->postJson('/api/files/'.$file->uuid.'/move', ['folderId' => $outside->uuid])->assertOk();
+        $this->actingAs($recipient, 'sanctum');
+        $this->getJson('/api/files/'.$file->uuid)->assertNotFound();
+
+        $this->actingAs($owner, 'sanctum');
+        $this->deleteJson('/api/shares/'.$share->uuid)->assertOk();
+        $this->actingAs($recipient, 'sanctum');
+        $this->getJson('/api/shared/folders/'.$root->uuid.'/browser')->assertNotFound();
+    }
+
     public function test_share_permission_update_revoke_and_shared_lists_are_private(): void
     {
         [$owner, $recipient, $file] = $this->sharedFile('viewer');

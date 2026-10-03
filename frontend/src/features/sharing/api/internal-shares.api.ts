@@ -11,4 +11,5 @@ export const internalSharesApi = {
   removeRecipient: shareService.removeRecipient,
   getSharedWithMe: shareService.getSharedWithMe,
   getSharedByMe: shareService.getSharedByMe,
+  browseSharedFolder: shareService.browseSharedFolder,
 };

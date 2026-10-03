@@ -15,7 +15,7 @@ export function percentageOf(value: number, total: number): number {
   return Math.min(100, Math.max(0, numericValue / numericTotal * 100));
 }
 export function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -23,5 +23,5 @@ export function formatDate(value: string): string {
 }
 export function formatRelative(value: string): string {
   const days = Math.round((Date.now() - new Date(value).getTime()) / 86400000);
-  return days <= 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
+  return days <= 0 ? "Hari ini" : days === 1 ? "Kemarin" : `${days} hari lalu`;
 }

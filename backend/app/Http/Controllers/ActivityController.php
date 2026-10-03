@@ -26,6 +26,10 @@ class ActivityController
                 $query->where('subject_type', $request->input('type'));
             }
         }
+        if ($request->filled('resource_type') && $request->filled('resource_id')) {
+            $query->where('subject_type', $request->input('resource_type'))
+                ->where('subject_uuid', $request->input('resource_id'));
+        }
         if ($request->filled('from')) {
             $query->where('created_at', '>=', $request->date('from'));
         }

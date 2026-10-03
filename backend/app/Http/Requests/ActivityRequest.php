@@ -21,6 +21,8 @@ class ActivityRequest extends FormRequest
             'action' => ['nullable', 'array'],
             'action.*' => [Rule::enum(ActivityAction::class)],
             'type' => ['nullable', Rule::in(['file', 'folder', 'system'])],
+            'resource_type' => ['nullable', Rule::in(['file', 'folder'])],
+            'resource_id' => ['nullable', 'string', 'max:100'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
             'search' => ['nullable', 'string', 'max:200'],

@@ -9,8 +9,13 @@ export interface NotificationPreferences {
 export interface SecuritySession {
   id: string
   device: string
+  deviceLabel: string
+  browser: string
+  os: string
   ipAddress: string | null
   lastActiveAt: string
+  createdAt: string | null
+  approximateStatus: 'active' | 'recent'
   isCurrent: boolean
 }
 
@@ -24,5 +29,11 @@ export const securityService = {
   async getSessions(): Promise<SecuritySession[]> {
     const response = await api.get<{ items: SecuritySession[] }>('/api/security/sessions')
     return response.items
+  },
+  async revokeSession(id: string): Promise<void> {
+    await api.delete(`/api/security/sessions/${encodeURIComponent(id)}`)
+  },
+  async revokeOtherSessions(): Promise<{ revokedCount: number }> {
+    return api.delete<{ revokedCount: number }>('/api/security/sessions/others')
   },
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\PublicLinkResource;
 use App\Models\File;
 use App\Models\Folder;
+use App\Models\PublicShareLink;
 use App\Services\PublicShareService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -67,6 +68,11 @@ class PublicLinkController
     public function folderUpdate(Request $request, Folder $folder, PublicShareService $public): JsonResponse
     {
         return $this->update($request, $folder, $public, 'folder');
+    }
+
+    public function analytics(Request $request, PublicShareLink $link, PublicShareService $public): JsonResponse
+    {
+        return ApiResponse::success($public->analytics($request->user(), $link));
     }
 
     private function update(Request $request, File|Folder $item, PublicShareService $public, string $type): JsonResponse

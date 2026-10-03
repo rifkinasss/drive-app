@@ -23,6 +23,9 @@ class PublicShareLink extends Model
         'password_hash',
         'allow_download',
         'expires_at',
+        'view_count',
+        'download_count',
+        'last_accessed_at',
     ];
 
     protected static function booted(): void
@@ -39,6 +42,9 @@ class PublicShareLink extends Model
             'permission' => PublicSharePermission::class,
             'allow_download' => 'boolean',
             'expires_at' => 'datetime',
+            'view_count' => 'integer',
+            'download_count' => 'integer',
+            'last_accessed_at' => 'datetime',
         ];
     }
 

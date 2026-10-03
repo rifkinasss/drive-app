@@ -36,7 +36,7 @@ return [
         'sharing.public_links_enabled' => ['group' => 'sharing', 'api' => 'publicLinksEnabled', 'type' => 'boolean', 'default' => true, 'rules' => ['boolean']],
         'maintenance.enabled' => ['group' => 'maintenance', 'api' => 'enabled', 'type' => 'boolean', 'default' => false, 'rules' => ['boolean']],
         'maintenance.message' => ['group' => 'maintenance', 'api' => 'message', 'type' => 'string', 'default' => 'Drive is temporarily unavailable for maintenance.', 'rules' => ['required', 'string', 'max:500']],
-        'advanced.debug_ui' => ['group' => 'advanced', 'api' => 'debugUi', 'type' => 'boolean', 'default' => false, 'rules' => ['boolean']],
+        'advanced.debug_ui' => ['group' => 'advanced', 'api' => 'debugUi', 'type' => 'boolean', 'default' => false, 'rules' => ['boolean'], 'writable' => false],
         'advanced.experimental_features' => ['group' => 'advanced', 'api' => 'experimentalFeatures', 'type' => 'json', 'default' => [], 'rules' => ['array', 'max:100'], 'writable' => false],
     ],
 ];

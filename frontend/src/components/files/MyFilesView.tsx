@@ -1,101 +1,1180 @@
-'use client'
+"use client";
 
-import { useMemo, useState, type DragEvent } from 'react'
-import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronRight, Download, FileText, Filter, FolderPlus, Grid2X2, List, MoreHorizontal, Search, Star, Trash2, Upload, X } from 'lucide-react'
-import { FilePreview } from '@/components/files/FilePreview'
-import { FileViewer } from '@/components/files/FileViewer'
-import { FileNotFoundState } from '@/components/system/FileNotFoundState'
-import { ItemIcon } from '@/components/ui/Icon'
-import { Modal } from '@/components/ui/Modal'
-import { formatBytes, formatRelative } from '@/lib/format'
-import type { CloudItem, CloudFileType } from '@/types/cloud'
-import type { useCloudStore } from '@/stores/cloud-store'
-import { useUserStore } from '@/stores/user-store'
-import { FileContextMenu } from '@/components/files/FileContextMenu'
-import { FileDetailsPanel } from '@/components/files/FileDetailsPanel'
-import { ShareDialog } from '@/components/files/ShareDialog'
-import { filesApi as cloudService } from '@/features/files/api/files.api'
+import { useMemo, useState, type DragEvent } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  FileText,
+  Filter,
+  FolderPlus,
+  Grid2X2,
+  List,
+  MoreHorizontal,
+  Search,
+  Star,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
+import { FilePreview } from "@/components/files/FilePreview";
+import { FileViewer } from "@/components/files/FileViewer";
+import { FileNotFoundState } from "@/components/system/FileNotFoundState";
+import { ItemIcon } from "@/components/ui/Icon";
+import { Modal } from "@/components/ui/Modal";
+import { formatBytes, formatRelative } from "@/lib/format";
+import type { CloudItem, CloudFileType } from "@/types/cloud";
+import type { useCloudStore } from "@/stores/cloud-store";
+import { useUserStore } from "@/stores/user-store";
+import { FileContextMenu } from "@/components/files/FileContextMenu";
+import { FileDetailsPanel } from "@/components/files/FileDetailsPanel";
+import { ShareDialog } from "@/components/files/ShareDialog";
+import { filesApi as cloudService } from "@/features/files/api/files.api";
 
-type Store = ReturnType<typeof useCloudStore>
-type FilterType = 'all' | 'folder' | CloudFileType
-type ModifiedFilter = 'all' | 'today' | 'week' | 'month' | 'older'
-type SortMode = 'name' | 'modified' | 'size'
-type SizeFilter = 'all' | 'small' | 'medium' | 'large'
-const referenceTime = Date.now()
+type Store = ReturnType<typeof useCloudStore>;
+type FilterType = "all" | "folder" | CloudFileType;
+type ModifiedFilter = "all" | "today" | "week" | "month" | "older";
+type SortMode = "name" | "modified" | "size";
+type SizeFilter = "all" | "small" | "medium" | "large";
+const referenceTime = Date.now();
 
-export function MyFilesView({ store, folderId }: { store: Store; folderId: string | null }) {
-  const router = useRouter()
-  const currentFolder = store.activeItems.find(item => item.id === folderId && item.kind === 'folder')
-  const [query, setQuery] = useState('')
-  const [type, setType] = useState<FilterType>('all')
-  const [modified, setModified] = useState<ModifiedFilter>('all')
-  const [extension, setExtension] = useState('')
-  const [sizeFilter, setSizeFilter] = useState<SizeFilter>('all')
-  const [starredOnly, setStarredOnly] = useState(false)
-  const [filterOpen, setFilterOpen] = useState(false)
-  const [bulkMoveOpen, setBulkMoveOpen] = useState(false)
-  const [moveTarget, setMoveTarget] = useState<string | null>(folderId)
-  const [sort, setSort] = useState<SortMode>('name')
-  const [selected, setSelected] = useState<string[]>([])
-  const [menu, setMenu] = useState<{ item: CloudItem; x: number; y: number } | null>(null)
-  const [modal, setModal] = useState<'folder' | 'rename' | 'preview' | 'share' | null>(null)
-  const [activeItem, setActiveItem] = useState<CloudItem | null>(null)
-  const [detailsItem, setDetailsItem] = useState<CloudItem | null>(null)
-  const [name, setName] = useState('')
-  const [dragging, setDragging] = useState(false)
-  const userStore = useUserStore()
-  const scoped = useMemo(() => store.activeItems.filter(item => item.parentId === (folderId || null)), [folderId, store.activeItems])
+export function MyFilesView({
+  store,
+  folderId,
+}: {
+  store: Store;
+  folderId: string | null;
+}) {
+  const router = useRouter();
+  const currentFolder = store.activeItems.find(
+    (item) => item.id === folderId && item.kind === "folder",
+  );
+  const [query, setQuery] = useState("");
+  const [type, setType] = useState<FilterType>("all");
+  const [modified, setModified] = useState<ModifiedFilter>("all");
+  const [extension, setExtension] = useState("");
+  const [sizeFilter, setSizeFilter] = useState<SizeFilter>("all");
+  const [starredOnly, setStarredOnly] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<string | null>(folderId);
+  const [sort, setSort] = useState<SortMode>("name");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [menu, setMenu] = useState<{
+    item: CloudItem;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [modal, setModal] = useState<
+    "folder" | "rename" | "preview" | "share" | null
+  >(null);
+  const [activeItem, setActiveItem] = useState<CloudItem | null>(null);
+  const [detailsItem, setDetailsItem] = useState<CloudItem | null>(null);
+  const [name, setName] = useState("");
+  const [dragging, setDragging] = useState(false);
+  const userStore = useUserStore();
+  const scoped = useMemo(
+    () =>
+      store.activeItems.filter((item) => item.parentId === (folderId || null)),
+    [folderId, store.activeItems],
+  );
   const filtered = useMemo(() => {
-    const now = referenceTime
-    const limit = modified === 'today' ? 1 : modified === 'week' ? 7 : modified === 'month' ? 30 : 31
-    return [...scoped].filter(item => {
-      const matchesQuery = !query || `${item.name} ${item.extension} ${item.fileType}`.toLowerCase().includes(query.toLowerCase())
-      const matchesType = type === 'all' ? true : type === 'folder' ? item.kind === 'folder' : item.fileType === type
-      const matchesExtension = !extension.trim() || item.extension.toLowerCase() === extension.trim().replace(/^\./, '').toLowerCase()
-      const matchesSize = sizeFilter === 'all' || item.kind === 'folder' || sizeFilter === 'small' && item.size < 10 * 1024 * 1024 || sizeFilter === 'medium' && item.size >= 10 * 1024 * 1024 && item.size < 100 * 1024 * 1024 || sizeFilter === 'large' && item.size >= 100 * 1024 * 1024
-      const matchesStarred = !starredOnly || item.starred
-      const age = (now - new Date(item.updatedAt).getTime()) / 86400000
-      const matchesModified = modified === 'all' || modified === 'older' && age > 30 || modified !== 'older' && age <= limit
-      return matchesQuery && matchesType && matchesExtension && matchesSize && matchesStarred && matchesModified
-    }).sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name) : sort === 'size' ? b.size - a.size : +new Date(b.updatedAt) - +new Date(a.updatedAt))
-  }, [extension, modified, query, scoped, sizeFilter, sort, starredOnly, type])
-  const folders = filtered.filter(item => item.kind === 'folder')
-  const files = filtered.filter(item => item.kind === 'file')
-  const closeModal = () => { setModal(null); setActiveItem(null); setName('') }
-  const openItem = (item: CloudItem) => { if (item.kind === 'folder') router.push(`/files?folder=${item.id}`); else { setActiveItem(item); setModal('preview') } }
-  const chooseItem = (item: CloudItem, additive = false) => setSelected(current => additive ? current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id] : [item.id])
-  const selectAll = () => setSelected(selected.length === filtered.length ? [] : filtered.map(item => item.id))
-  const clearFilters = () => { setQuery(''); setType('all'); setModified('all'); setExtension(''); setSizeFilter('all'); setStarredOnly(false) }
-  const moveSelected = async () => { await Promise.all(selected.map(id => store.move(id, moveTarget))); setSelected([]); setBulkMoveOpen(false) }
-  const contextMenu = (item: CloudItem, event: React.MouseEvent) => { event.preventDefault(); chooseItem(item); setMenu({ item, x: Math.min(event.clientX, window.innerWidth - 190), y: Math.min(event.clientY, window.innerHeight - 240) }) }
-  const uploadFiles = (filesToUpload: File[]) => filesToUpload.forEach(file => store.upload(file, folderId))
-  const onDrop = (event: DragEvent<HTMLDivElement>) => { event.preventDefault(); setDragging(false); uploadFiles(Array.from(event.dataTransfer.files)) }
-  if (folderId && !currentFolder) return <div className="files-workspace"><FileNotFoundState kind="folder" /></div>
-  return <div className="files-workspace" onClick={() => setMenu(null)} onDragOver={event => { event.preventDefault(); setDragging(true) }} onDragLeave={event => { if (event.currentTarget === event.target) setDragging(false) }} onDrop={onDrop}>
-    {dragging && <div className="drop-overlay"><Upload size={22} /><strong>Drop files to upload to {currentFolder?.name ?? 'My Files'}</strong><span>Files will be added to this folder.</span></div>}
-    <div className="files-header"><div><h1>My Files</h1><Breadcrumb store={store} folderId={folderId} onRoot={() => router.push('/files')} /></div><NewMenu store={store} folderId={folderId} onFolder={() => { setModal('folder'); setName('') }} /></div>
-    <div className="files-toolbar"><div className="folder-search"><Search size={15} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder={`Search in ${currentFolder?.name ?? 'My Files'}`} aria-label="Search in current folder" /></div><SelectControl label="Type" value={type} onChange={value => setType(value as FilterType)} options={['all', 'folder', 'document', 'image', 'video', 'archive', 'code', 'other']} /><SelectControl label="Modified" value={modified} onChange={value => setModified(value as ModifiedFilter)} options={['all', 'today', 'week', 'month', 'older']} /><SelectControl label="Sort" value={sort} onChange={value => setSort(value as SortMode)} options={['name', 'modified', 'size']} /><div className="filter-popover-wrap"><button className={`button secondary filter-toggle ${extension || sizeFilter !== 'all' || starredOnly ? 'active' : ''}`} onClick={() => setFilterOpen(value => !value)} aria-expanded={filterOpen}><Filter size={14} />Filters</button>{filterOpen && <div className="filter-popover"><label>Extension<input value={extension} onChange={event => setExtension(event.target.value)} placeholder="pdf, jpg…" /></label><label>Size<select value={sizeFilter} onChange={event => setSizeFilter(event.target.value as SizeFilter)}><option value="all">Any size</option><option value="small">Under 10 MB</option><option value="medium">10–100 MB</option><option value="large">Over 100 MB</option></select></label><label className="filter-check"><input type="checkbox" checked={starredOnly} onChange={event => setStarredOnly(event.target.checked)} /> Starred only</label><button className="text-action" onClick={clearFilters}><X size={13} />Clear filters</button></div>}</div><div className="toolbar-spacer" />{selected.length > 0 && <span className="selection-count">{selected.length} selected</span>}<div className="view-toggle" aria-label="Choose view"><button className={store.view === 'list' ? 'selected' : ''} onClick={() => store.setView('list')} aria-label="List view"><List size={16} /></button><button className={store.view === 'grid' ? 'selected' : ''} onClick={() => store.setView('grid')} aria-label="Grid view"><Grid2X2 size={16} /></button></div></div>
-    {(query || type !== 'all' || modified !== 'all' || extension || sizeFilter !== 'all' || starredOnly) && <div className="active-filter-chips"><span>Active filters</span>{query && <button onClick={() => setQuery('')}>Search: {query} <X size={12} /></button>}{type !== 'all' && <button onClick={() => setType('all')}>Type: {type} <X size={12} /></button>}{modified !== 'all' && <button onClick={() => setModified('all')}>Modified: {modified} <X size={12} /></button>}{extension && <button onClick={() => setExtension('')}>Extension: {extension} <X size={12} /></button>}{sizeFilter !== 'all' && <button onClick={() => setSizeFilter('all')}>Size: {sizeFilter} <X size={12} /></button>}{starredOnly && <button onClick={() => setStarredOnly(false)}>Starred <X size={12} /></button>}</div>}
-    {selected.length > 0 && <div className="selection-toolbar"><button onClick={selectAll}>{selected.length === filtered.length ? 'Clear all' : 'Select all'}</button><span>{selected.length} selected</span><button onClick={() => void store.bulkStar(selected, !selected.every(id => store.activeItems.find(item => item.id === id)?.starred))}><Star size={15} />{selected.every(id => store.activeItems.find(item => item.id === id)?.starred) ? 'Unstar' : 'Star'}</button><button onClick={() => setBulkMoveOpen(true)}><FolderPlus size={15} />Move</button><button onClick={() => void store.bulkTrash(selected)}><Trash2 size={15} />Move to trash</button>{selected.some(id => store.activeItems.find(item => item.id === id)?.kind === 'file') && <button onClick={() => store.bulkDownload(selected)}><Download size={15} />Download</button>}{selected.length === 1 && <button onClick={() => setDetailsItem(store.activeItems.find(item => item.id === selected[0]) ?? null)}>Details</button>}<button onClick={() => setSelected([])}>Clear</button></div>}
-    {store.view === 'list' ? <UnifiedFileList items={filtered} selected={selected} onSelect={chooseItem} onOpen={openItem} onContextMenu={contextMenu} onStar={store.toggleStar} onTrash={store.moveToTrash} onDetails={item => setDetailsItem(item)} /> : <div className="browser-sections">{folders.length > 0 && <section><SectionTitle title="Folders" count={folders.length} /><div className="folder-browser-grid">{folders.map(item => <FolderCard key={item.id} item={item} selected={selected.includes(item.id)} onSelect={chooseItem} onOpen={openItem} onContextMenu={contextMenu} />)}</div></section>}{files.length > 0 && <section><SectionTitle title="Files" count={files.length} /><div className="file-browser-grid">{files.map(item => <FileCard key={item.id} item={item} selected={selected.includes(item.id)} onSelect={chooseItem} onOpen={openItem} onContextMenu={contextMenu} onStar={store.toggleStar} />)}</div></section>}{folders.length === 0 && files.length === 0 && <div className="browser-empty"><FileText size={22} /><h2>{query || type !== 'all' || modified !== 'all' ? 'No matching items' : 'No files here yet'}</h2><p>{query || type !== 'all' || modified !== 'all' ? 'Try changing the search or filters.' : 'Upload a file or create a folder to get started.'}</p><div><label className="button primary"><Upload size={15} />Upload<input hidden type="file" multiple onChange={event => uploadFiles(Array.from(event.target.files ?? []))} /></label><button className="button secondary" onClick={() => setModal('folder')}><FolderPlus size={15} />New folder</button></div></div>}</div>}
-    {menu && <ContextMenu item={menu.item} x={menu.x} y={menu.y} onClose={() => setMenu(null)} onOpen={() => { openItem(menu.item); setMenu(null) }} onShowFolder={() => { setMenu(null); router.push(menu.item.parentId ? `/files?folder=${menu.item.parentId}` : '/files') }} onStar={() => { store.toggleStar(menu.item.id); setMenu(null) }} onRename={() => { setActiveItem(menu.item); setName(menu.item.name); setModal('rename'); setMenu(null) }} onMove={() => { store.move(menu.item.id, folderId); setMenu(null) }} onCopy={() => { store.copy(); setMenu(null) }} onShare={() => { setActiveItem(menu.item); setModal('share'); setMenu(null) }} onTrash={() => { store.moveToTrash(menu.item.id); setMenu(null) }} onDetails={() => { setDetailsItem(menu.item); setMenu(null) }} />}
-    {bulkMoveOpen && <Modal title="Move selected items" onClose={() => setBulkMoveOpen(false)}><label className="field-label" htmlFor="bulk-move-target">Destination folder</label><select id="bulk-move-target" className="select-input" value={moveTarget ?? ''} onChange={event => setMoveTarget(event.target.value || null)}><option value="">My Files</option>{store.activeItems.filter(item => item.kind === 'folder' && !selected.includes(item.id)).map(folder => <option key={folder.id} value={folder.id}>{folder.path ? `${folder.path} / ` : ''}{folder.name}</option>)}</select><div className="modal-actions"><button className="button secondary" onClick={() => setBulkMoveOpen(false)}>Cancel</button><button className="button primary" onClick={() => void moveSelected()}>Move items</button></div></Modal>}
-    {modal === 'folder' && <Modal title="New folder" onClose={closeModal}><form onSubmit={event => { event.preventDefault(); if (name.trim()) { store.createFolder(name.trim(), folderId); closeModal() } }}><label className="field-label" htmlFor="files-folder-name">Folder name</label><input id="files-folder-name" autoFocus className="text-input" value={name} onChange={event => setName(event.target.value)} placeholder="e.g. Reference material" /><div className="modal-actions"><button type="button" className="button secondary" onClick={closeModal}>Cancel</button><button className="button primary" type="submit">Create folder</button></div></form></Modal>}
-    {modal === 'rename' && activeItem && <Modal title={`Rename ${activeItem.kind}`} onClose={closeModal}><form onSubmit={event => { event.preventDefault(); if (name.trim()) { store.rename(activeItem.id, name.trim()); closeModal() } }}><label className="field-label" htmlFor="files-rename">Name</label><input id="files-rename" autoFocus className="text-input" value={name} onChange={event => setName(event.target.value)} /><div className="modal-actions"><button type="button" className="button secondary" onClick={closeModal}>Cancel</button><button className="button primary" type="submit">Save name</button></div></form></Modal>}
-    {detailsItem && <FileDetailsPanel key={detailsItem.id} item={detailsItem} onClose={() => setDetailsItem(null)} />}
-    {modal === 'share' && activeItem && <ShareDialog item={activeItem} ownerId={userStore.currentUserId} users={userStore.users} onClose={closeModal} />}
-    {modal === 'preview' && activeItem && <Modal title="" onClose={closeModal}><FileViewer item={activeItem} onClose={closeModal} onDownload={() => downloadItem(activeItem)} onShare={() => { closeModal(); setModal('share') }} onStar={() => store.toggleStar(activeItem.id)} onShowInFolder={() => { closeModal(); router.push(activeItem.parentId ? `/files?folder=${activeItem.parentId}` : '/files') }} onTrash={() => { store.moveToTrash(activeItem.id); closeModal() }} /></Modal>}
-  </div>
+    const now = referenceTime;
+    const limit =
+      modified === "today"
+        ? 1
+        : modified === "week"
+          ? 7
+          : modified === "month"
+            ? 30
+            : 31;
+    return [...scoped]
+      .filter((item) => {
+        const matchesQuery =
+          !query ||
+          `${item.name} ${item.extension} ${item.fileType}`
+            .toLowerCase()
+            .includes(query.toLowerCase());
+        const matchesType =
+          type === "all"
+            ? true
+            : type === "folder"
+              ? item.kind === "folder"
+              : item.fileType === type;
+        const matchesExtension =
+          !extension.trim() ||
+          item.extension.toLowerCase() ===
+            extension.trim().replace(/^\./, "").toLowerCase();
+        const matchesSize =
+          sizeFilter === "all" ||
+          item.kind === "folder" ||
+          (sizeFilter === "small" && item.size < 10 * 1024 * 1024) ||
+          (sizeFilter === "medium" &&
+            item.size >= 10 * 1024 * 1024 &&
+            item.size < 100 * 1024 * 1024) ||
+          (sizeFilter === "large" && item.size >= 100 * 1024 * 1024);
+        const matchesStarred = !starredOnly || item.starred;
+        const age = (now - new Date(item.updatedAt).getTime()) / 86400000;
+        const matchesModified =
+          modified === "all" ||
+          (modified === "older" && age > 30) ||
+          (modified !== "older" && age <= limit);
+        return (
+          matchesQuery &&
+          matchesType &&
+          matchesExtension &&
+          matchesSize &&
+          matchesStarred &&
+          matchesModified
+        );
+      })
+      .sort((a, b) =>
+        sort === "name"
+          ? a.name.localeCompare(b.name)
+          : sort === "size"
+            ? b.size - a.size
+            : +new Date(b.updatedAt) - +new Date(a.updatedAt),
+      );
+  }, [extension, modified, query, scoped, sizeFilter, sort, starredOnly, type]);
+  const folders = filtered.filter((item) => item.kind === "folder");
+  const files = filtered.filter((item) => item.kind === "file");
+  const closeModal = () => {
+    setModal(null);
+    setActiveItem(null);
+    setName("");
+  };
+  const openItem = (item: CloudItem) => {
+    if (item.kind === "folder") router.push(`/files?folder=${item.id}`);
+    else {
+      setActiveItem(item);
+      setModal("preview");
+    }
+  };
+  const chooseItem = (item: CloudItem, additive = false) =>
+    setSelected((current) =>
+      additive
+        ? current.includes(item.id)
+          ? current.filter((id) => id !== item.id)
+          : [...current, item.id]
+        : [item.id],
+    );
+  const selectAll = () =>
+    setSelected(
+      selected.length === filtered.length
+        ? []
+        : filtered.map((item) => item.id),
+    );
+  const clearFilters = () => {
+    setQuery("");
+    setType("all");
+    setModified("all");
+    setExtension("");
+    setSizeFilter("all");
+    setStarredOnly(false);
+  };
+  const moveSelected = async () => {
+    await Promise.all(selected.map((id) => store.move(id, moveTarget)));
+    setSelected([]);
+    setBulkMoveOpen(false);
+  };
+  const contextMenu = (item: CloudItem, event: React.MouseEvent) => {
+    event.preventDefault();
+    chooseItem(item);
+    setMenu({
+      item,
+      x: Math.min(event.clientX, window.innerWidth - 190),
+      y: Math.min(event.clientY, window.innerHeight - 240),
+    });
+  };
+  const uploadFiles = (filesToUpload: File[]) =>
+    filesToUpload.forEach((file) => store.upload(file, folderId));
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    uploadFiles(Array.from(event.dataTransfer.files));
+  };
+  if (folderId && !currentFolder)
+    return (
+      <div className="files-workspace">
+        <FileNotFoundState kind="folder" />
+      </div>
+    );
+  return (
+    <div
+      className="files-workspace"
+      onClick={() => setMenu(null)}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget === event.target) setDragging(false);
+      }}
+      onDrop={onDrop}
+    >
+      {dragging && (
+        <div className="drop-overlay">
+          <Upload size={22} />
+          <strong>
+            Drop files to upload to {currentFolder?.name ?? "My Files"}
+          </strong>
+          <span>Files will be added to this folder.</span>
+        </div>
+      )}
+      <div className="files-header">
+        <div>
+          <h1>My Files</h1>
+          <Breadcrumb
+            store={store}
+            folderId={folderId}
+            onRoot={() => router.push("/files")}
+          />
+        </div>
+        <NewMenu
+          store={store}
+          folderId={folderId}
+          onFolder={() => {
+            setModal("folder");
+            setName("");
+          }}
+        />
+      </div>
+      <div className="files-toolbar">
+        <div className="folder-search">
+          <Search size={15} />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={`Search in ${currentFolder?.name ?? "My Files"}`}
+            aria-label="Search in current folder"
+          />
+        </div>
+        <SelectControl
+          label="Type"
+          value={type}
+          onChange={(value) => setType(value as FilterType)}
+          options={[
+            "all",
+            "folder",
+            "document",
+            "image",
+            "video",
+            "archive",
+            "code",
+            "other",
+          ]}
+        />
+        <SelectControl
+          label="Modified"
+          value={modified}
+          onChange={(value) => setModified(value as ModifiedFilter)}
+          options={["all", "today", "week", "month", "older"]}
+        />
+        <SelectControl
+          label="Sort"
+          value={sort}
+          onChange={(value) => setSort(value as SortMode)}
+          options={["name", "modified", "size"]}
+        />
+        <div className="filter-popover-wrap">
+          <button
+            className={`button secondary filter-toggle ${extension || sizeFilter !== "all" || starredOnly ? "active" : ""}`}
+            onClick={() => setFilterOpen((value) => !value)}
+            aria-expanded={filterOpen}
+          >
+            <Filter size={14} />
+            Filters
+          </button>
+          {filterOpen && (
+            <div className="filter-popover">
+              <label>
+                Extension
+                <input
+                  value={extension}
+                  onChange={(event) => setExtension(event.target.value)}
+                  placeholder="pdf, jpg…"
+                />
+              </label>
+              <label>
+                Size
+                <select
+                  value={sizeFilter}
+                  onChange={(event) =>
+                    setSizeFilter(event.target.value as SizeFilter)
+                  }
+                >
+                  <option value="all">Any size</option>
+                  <option value="small">Under 10 MB</option>
+                  <option value="medium">10–100 MB</option>
+                  <option value="large">Over 100 MB</option>
+                </select>
+              </label>
+              <label className="filter-check">
+                <input
+                  type="checkbox"
+                  checked={starredOnly}
+                  onChange={(event) => setStarredOnly(event.target.checked)}
+                />{" "}
+                Starred only
+              </label>
+              <button className="text-action" onClick={clearFilters}>
+                <X size={13} />
+                Clear filters
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="toolbar-spacer" />
+        {selected.length > 0 && (
+          <span className="selection-count">{selected.length} selected</span>
+        )}
+        <div className="view-toggle" aria-label="Choose view">
+          <button
+            type="button"
+            className={store.view === "list" ? "selected" : ""}
+            onClick={() => store.setView("list")}
+            aria-label="List view"
+            aria-pressed={store.view === "list"}
+          >
+            <List size={16} />
+          </button>
+          <button
+            type="button"
+            className={store.view === "grid" ? "selected" : ""}
+            onClick={() => store.setView("grid")}
+            aria-label="Grid view"
+            aria-pressed={store.view === "grid"}
+          >
+            <Grid2X2 size={16} />
+          </button>
+        </div>
+      </div>
+      {(query ||
+        type !== "all" ||
+        modified !== "all" ||
+        extension ||
+        sizeFilter !== "all" ||
+        starredOnly) && (
+        <div className="active-filter-chips">
+          <span>Active filters</span>
+          {query && (
+            <button onClick={() => setQuery("")}>
+              Search: {query} <X size={12} />
+            </button>
+          )}
+          {type !== "all" && (
+            <button onClick={() => setType("all")}>
+              Type: {type} <X size={12} />
+            </button>
+          )}
+          {modified !== "all" && (
+            <button onClick={() => setModified("all")}>
+              Modified: {modified} <X size={12} />
+            </button>
+          )}
+          {extension && (
+            <button onClick={() => setExtension("")}>
+              Extension: {extension} <X size={12} />
+            </button>
+          )}
+          {sizeFilter !== "all" && (
+            <button onClick={() => setSizeFilter("all")}>
+              Size: {sizeFilter} <X size={12} />
+            </button>
+          )}
+          {starredOnly && (
+            <button onClick={() => setStarredOnly(false)}>
+              Starred <X size={12} />
+            </button>
+          )}
+        </div>
+      )}
+      {selected.length > 0 && (
+        <div className="selection-toolbar">
+          <button onClick={selectAll}>
+            {selected.length === filtered.length ? "Clear all" : "Select all"}
+          </button>
+          <span>{selected.length} selected</span>
+          <button
+            onClick={() =>
+              void store.bulkStar(
+                selected,
+                !selected.every(
+                  (id) =>
+                    store.activeItems.find((item) => item.id === id)?.starred,
+                ),
+              )
+            }
+          >
+            <Star size={15} />
+            {selected.every(
+              (id) => store.activeItems.find((item) => item.id === id)?.starred,
+            )
+              ? "Unstar"
+              : "Star"}
+          </button>
+          <button onClick={() => setBulkMoveOpen(true)}>
+            <FolderPlus size={15} />
+            Move
+          </button>
+          <button onClick={() => void store.bulkTrash(selected)}>
+            <Trash2 size={15} />
+            Move to trash
+          </button>
+          {selected.some(
+            (id) =>
+              store.activeItems.find((item) => item.id === id)?.kind === "file",
+          ) && (
+            <button onClick={() => store.bulkDownload(selected)}>
+              <Download size={15} />
+              Download
+            </button>
+          )}
+          {selected.length === 1 && (
+            <button
+              onClick={() =>
+                setDetailsItem(
+                  store.activeItems.find((item) => item.id === selected[0]) ??
+                    null,
+                )
+              }
+            >
+              Details
+            </button>
+          )}
+          <button onClick={() => setSelected([])}>Clear</button>
+        </div>
+      )}
+      {store.view === "list" ? (
+        <UnifiedFileList
+          items={filtered}
+          selected={selected}
+          onSelect={chooseItem}
+          onOpen={openItem}
+          onContextMenu={contextMenu}
+          onStar={store.toggleStar}
+          onTrash={store.moveToTrash}
+          onDetails={(item) => setDetailsItem(item)}
+        />
+      ) : (
+        <div className="browser-sections">
+          {folders.length > 0 && (
+            <section>
+              <SectionTitle title="Folders" count={folders.length} />
+              <div className="folder-browser-grid">
+                {folders.map((item) => (
+                  <FolderCard
+                    key={item.id}
+                    item={item}
+                    selected={selected.includes(item.id)}
+                    onSelect={chooseItem}
+                    onOpen={openItem}
+                    onContextMenu={contextMenu}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+          {files.length > 0 && (
+            <section>
+              <SectionTitle title="Files" count={files.length} />
+              <div className="file-browser-grid">
+                {files.map((item) => (
+                  <FileCard
+                    key={item.id}
+                    item={item}
+                    selected={selected.includes(item.id)}
+                    onSelect={chooseItem}
+                    onOpen={openItem}
+                    onContextMenu={contextMenu}
+                    onStar={store.toggleStar}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+          {folders.length === 0 && files.length === 0 && (
+            <div className="browser-empty">
+              <FileText size={22} />
+              <h2>
+                {query || type !== "all" || modified !== "all"
+                  ? "No matching items"
+                  : "No files here yet"}
+              </h2>
+              <p>
+                {query || type !== "all" || modified !== "all"
+                  ? "Try changing the search or filters."
+                  : "Upload a file or create a folder to get started."}
+              </p>
+              <div>
+                <label className="button primary" htmlFor="my-files-upload">
+                  <Upload
+                    aria-hidden="true"
+                    className="action-button-icon"
+                    size={15}
+                  />
+                  <span>Upload</span>
+                </label>
+                <input
+                  id="my-files-upload"
+                  hidden
+                  type="file"
+                  multiple
+                  onChange={(event) =>
+                    uploadFiles(Array.from(event.target.files ?? []))
+                  }
+                />
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setModal("folder")}
+                >
+                  <FolderPlus
+                    aria-hidden="true"
+                    className="action-button-icon"
+                    size={15}
+                  />
+                  <span>New folder</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {menu && (
+        <ContextMenu
+          item={menu.item}
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          onOpen={() => {
+            openItem(menu.item);
+            setMenu(null);
+          }}
+          onShowFolder={() => {
+            setMenu(null);
+            router.push(
+              menu.item.parentId
+                ? `/files?folder=${menu.item.parentId}`
+                : "/files",
+            );
+          }}
+          onStar={() => {
+            store.toggleStar(menu.item.id);
+            setMenu(null);
+          }}
+          onRename={() => {
+            setActiveItem(menu.item);
+            setName(menu.item.name);
+            setModal("rename");
+            setMenu(null);
+          }}
+          onMove={() => {
+            store.move(menu.item.id, folderId);
+            setMenu(null);
+          }}
+          onCopy={() => {
+            store.copy();
+            setMenu(null);
+          }}
+          onShare={() => {
+            setActiveItem(menu.item);
+            setModal("share");
+            setMenu(null);
+          }}
+          onTrash={() => {
+            store.moveToTrash(menu.item.id);
+            setMenu(null);
+          }}
+          onDetails={() => {
+            setDetailsItem(menu.item);
+            setMenu(null);
+          }}
+        />
+      )}
+      {bulkMoveOpen && (
+        <Modal
+          title="Move selected items"
+          onClose={() => setBulkMoveOpen(false)}
+        >
+          <label className="field-label" htmlFor="bulk-move-target">
+            Destination folder
+          </label>
+          <select
+            id="bulk-move-target"
+            className="select-input"
+            value={moveTarget ?? ""}
+            onChange={(event) => setMoveTarget(event.target.value || null)}
+          >
+            <option value="">My Files</option>
+            {store.activeItems
+              .filter(
+                (item) => item.kind === "folder" && !selected.includes(item.id),
+              )
+              .map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.path ? `${folder.path} / ` : ""}
+                  {folder.name}
+                </option>
+              ))}
+          </select>
+          <div className="modal-actions">
+            <button
+              className="button secondary"
+              onClick={() => setBulkMoveOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="button primary"
+              onClick={() => void moveSelected()}
+            >
+              Move items
+            </button>
+          </div>
+        </Modal>
+      )}
+      {modal === "folder" && (
+        <Modal title="New folder" onClose={closeModal}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (name.trim()) {
+                store.createFolder(name.trim(), folderId);
+                closeModal();
+              }
+            }}
+          >
+            <label className="field-label" htmlFor="files-folder-name">
+              Folder name
+            </label>
+            <input
+              id="files-folder-name"
+              autoFocus
+              className="text-input"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="e.g. Reference material"
+            />
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="button secondary"
+                onClick={closeModal}
+              >
+                Cancel
+              </button>
+              <button className="button primary" type="submit">
+                Create folder
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {modal === "rename" && activeItem && (
+        <Modal title={`Rename ${activeItem.kind}`} onClose={closeModal}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (name.trim()) {
+                store.rename(activeItem.id, name.trim());
+                closeModal();
+              }
+            }}
+          >
+            <label className="field-label" htmlFor="files-rename">
+              Name
+            </label>
+            <input
+              id="files-rename"
+              autoFocus
+              className="text-input"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="button secondary"
+                onClick={closeModal}
+              >
+                Cancel
+              </button>
+              <button className="button primary" type="submit">
+                Save name
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {detailsItem && (
+        <FileDetailsPanel
+          key={detailsItem.id}
+          item={detailsItem}
+          onClose={() => setDetailsItem(null)}
+        />
+      )}
+      {modal === "share" && activeItem && (
+        <ShareDialog
+          item={activeItem}
+          ownerId={userStore.currentUserId}
+          users={userStore.users}
+          onClose={closeModal}
+        />
+      )}
+      {modal === "preview" && activeItem && (
+        <Modal title="" onClose={closeModal}>
+          <FileViewer
+            item={activeItem}
+            onClose={closeModal}
+            onDownload={() => downloadItem(activeItem)}
+            onShare={() => {
+              closeModal();
+              setModal("share");
+            }}
+            onStar={() => store.toggleStar(activeItem.id)}
+            onShowInFolder={() => {
+              closeModal();
+              router.push(
+                activeItem.parentId
+                  ? `/files?folder=${activeItem.parentId}`
+                  : "/files",
+              );
+            }}
+            onTrash={() => {
+              store.moveToTrash(activeItem.id);
+              closeModal();
+            }}
+          />
+        </Modal>
+      )}
+    </div>
+  );
 }
 
-function downloadItem(item: CloudItem) { void cloudService.download(item) }
+function downloadItem(item: CloudItem) {
+  void cloudService.download(item);
+}
 
-function Breadcrumb({ store, folderId, onRoot }: { store: Store; folderId: string | null; onRoot: () => void }) { const parts: CloudItem[] = []; let current = folderId ? store.activeItems.find(item => item.id === folderId) : undefined; while (current) { parts.unshift(current); current = current.parentId ? store.activeItems.find(item => item.id === current?.parentId) : undefined } return <div className="cloud-breadcrumb"><button onClick={onRoot}>My Files</button>{parts.map(part => <span key={part.id}><ChevronRight size={13} />{part.name}</span>)}</div> }
-function SectionTitle({ title, count }: { title: string; count: number }) { return <div className="browser-section-title"><h2>{title}</h2><span>{count}</span></div> }
-function SelectControl({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) { return <label className="filter-control"><span>{label}</span><select value={value} onChange={event => onChange(event.target.value)} aria-label={label}>{options.map(option => <option key={option} value={option}>{option === 'all' ? 'All' : option[0].toUpperCase() + option.slice(1)}</option>)}</select><ChevronDown size={13} /></label> }
-function NewMenu({ store, folderId, onFolder }: { store: Store; folderId: string | null; onFolder: () => void }) { const [open, setOpen] = useState(false); const upload = (files: FileList | null) => { Array.from(files ?? []).forEach(file => store.upload(file, folderId)); setOpen(false) }; return <div className="new-menu-wrap"><button className="button primary new-button" onClick={() => setOpen(current => !current)}><FolderPlus size={15} />New</button>{open && <div className="new-menu"><button onClick={() => { onFolder(); setOpen(false) }}>New folder</button><span className="menu-separator" /><label>Upload file<input hidden type="file" multiple onChange={event => { upload(event.target.files); event.target.value = '' }} /></label><label>Upload folder<input hidden type="file" multiple onChange={event => { upload(event.target.files); event.target.value = '' }} {...({ webkitdirectory: '', directory: '' } as Record<string, string>)} /></label></div>}</div> }
-function FolderCard({ item, selected, onSelect, onOpen, onContextMenu }: { item: CloudItem; selected: boolean; onSelect: (item: CloudItem, additive?: boolean) => void; onOpen: (item: CloudItem) => void; onContextMenu: (item: CloudItem, event: React.MouseEvent) => void }) { return <article className={`folder-browser-card ${selected ? 'selected' : ''}`} onContextMenu={event => onContextMenu(item, event)} onClick={event => onSelect(item, event.metaKey || event.ctrlKey)} onDoubleClick={() => onOpen(item)}><ItemIcon item={item} open /><div className="browser-card-copy"><strong>{item.name}</strong><span>{formatRelative(item.updatedAt).toLowerCase()}</span></div><button className="icon-button" onClick={event => { event.stopPropagation(); onContextMenu(item, event) }} aria-label={`More actions for ${item.name}`}><MoreHorizontal size={17} /></button></article> }
-function FileCard({ item, selected, onSelect, onOpen, onContextMenu, onStar }: { item: CloudItem; selected: boolean; onSelect: (item: CloudItem, additive?: boolean) => void; onOpen: (item: CloudItem) => void; onContextMenu: (item: CloudItem, event: React.MouseEvent) => void; onStar: (id: string) => void }) { return <article className={`file-browser-card ${selected ? 'selected' : ''}`} onContextMenu={event => onContextMenu(item, event)} onClick={event => onSelect(item, event.metaKey || event.ctrlKey)} onDoubleClick={() => onOpen(item)}><div className="file-card-top"><div className="file-card-title"><ItemIcon item={item} /><strong title={item.name}>{item.name}</strong></div><button className="icon-button" onClick={event => { event.stopPropagation(); onContextMenu(item, event) }} aria-label={`More actions for ${item.name}`}><MoreHorizontal size={17} /></button></div><button className="browser-preview-button" onClick={event => { event.stopPropagation(); onOpen(item) }}><FilePreview item={item} /></button><div className="file-card-meta"><span>{item.extension.toUpperCase()} · {formatBytes(item.size)}</span><button className="icon-button" onClick={event => { event.stopPropagation(); onStar(item.id) }} aria-label={item.starred ? `Unstar ${item.name}` : `Star ${item.name}`}><Star size={15} fill={item.starred ? 'currentColor' : 'none'} /></button></div></article> }
-function UnifiedFileList({ items, selected, onSelect, onOpen, onContextMenu, onStar, onTrash, onDetails }: { items: CloudItem[]; selected: string[]; onSelect: (item: CloudItem, additive?: boolean) => void; onOpen: (item: CloudItem) => void; onContextMenu: (item: CloudItem, event: React.MouseEvent) => void; onStar: (id: string) => void; onTrash: (id: string) => void; onDetails: (item: CloudItem) => void }) { void onTrash; void onDetails; return <div className="file-table-wrap browser-list"><table className="file-table"><thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Modified</th><th>Actions</th></tr></thead><tbody>{items.map(item => <tr className={selected.includes(item.id) ? 'selected-row' : ''} key={item.id} onContextMenu={event => onContextMenu(item, event)} onClick={event => onSelect(item, event.metaKey || event.ctrlKey)} onDoubleClick={() => onOpen(item)}><td><button className="name-cell" onClick={event => { event.stopPropagation(); onOpen(item) }}><ItemIcon item={item} /><span>{item.name}</span>{item.starred && <Star size={13} className="starred" fill="currentColor" />}</button></td><td className="muted-cell">{item.kind === 'folder' ? 'Folder' : item.extension.toUpperCase()}</td><td className="muted-cell">{formatBytes(item.size)}</td><td className="muted-cell">{formatRelative(item.updatedAt)}</td><td><div className="row-actions"><button className="icon-button" onClick={event => { event.stopPropagation(); onStar(item.id) }} aria-label={`Star ${item.name}`}><Star size={16} fill={item.starred ? 'currentColor' : 'none'} /></button><button className="icon-button" onClick={event => { event.stopPropagation(); onContextMenu(item, event) }} aria-label={`More actions for ${item.name}`}><MoreHorizontal size={17} /></button></div></td></tr>)}</tbody></table></div> }
-function ContextMenu({ item, x, y, onClose, onOpen, onShowFolder, onStar, onRename, onMove, onCopy, onShare, onTrash, onDetails }: { item: CloudItem; x: number; y: number; onClose: () => void; onOpen: () => void; onShowFolder: () => void; onStar: () => void; onRename: () => void; onMove: () => void; onCopy: () => void; onShare: () => void; onTrash: () => void; onDetails: () => void }) { return <FileContextMenu item={item} x={x} y={y} onClose={onClose} groups={[[{ id: 'open', label: item.kind === 'file' ? 'Preview' : 'Open', onSelect: onOpen }, { id: 'show-folder', label: 'Show in folder', onSelect: onShowFolder }, { id: 'download', label: 'Download', onSelect: () => downloadItem(item) }], [{ id: 'share', label: 'Share', onSelect: onShare }, { id: 'star', label: item.starred ? 'Unstar' : 'Star', onSelect: onStar }, { id: 'rename', label: 'Rename', onSelect: onRename }, { id: 'move', label: 'Move', onSelect: onMove }, { id: 'copy', label: 'Copy', onSelect: onCopy }], [{ id: 'properties', label: 'Details', onSelect: onDetails }], [{ id: 'trash', label: 'Move to Trash', onSelect: onTrash, destructive: true }]]} /> }
+function Breadcrumb({
+  store,
+  folderId,
+  onRoot,
+}: {
+  store: Store;
+  folderId: string | null;
+  onRoot: () => void;
+}) {
+  const parts: CloudItem[] = [];
+  let current = folderId
+    ? store.activeItems.find((item) => item.id === folderId)
+    : undefined;
+  while (current) {
+    parts.unshift(current);
+    current = current.parentId
+      ? store.activeItems.find((item) => item.id === current?.parentId)
+      : undefined;
+  }
+  return (
+    <div
+      className={`cloud-breadcrumb ${parts.length ? "has-folder" : "root-breadcrumb"}`}
+    >
+      <button onClick={onRoot}>My Files</button>
+      {parts.map((part) => (
+        <span key={part.id}>
+          <ChevronRight size={13} />
+          {part.name}
+        </span>
+      ))}
+    </div>
+  );
+}
+function SectionTitle({ title, count }: { title: string; count: number }) {
+  return (
+    <div className="browser-section-title">
+      <h2>{title}</h2>
+      <span>{count}</span>
+    </div>
+  );
+}
+function SelectControl({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="filter-control">
+      <span>{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={label}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option === "all"
+              ? "All"
+              : option[0].toUpperCase() + option.slice(1)}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={13} />
+    </label>
+  );
+}
+function NewMenu({
+  store,
+  folderId,
+  onFolder,
+}: {
+  store: Store;
+  folderId: string | null;
+  onFolder: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const upload = (files: FileList | null) => {
+    Array.from(files ?? []).forEach((file) => store.upload(file, folderId));
+    setOpen(false);
+  };
+  return (
+    <div className="new-menu-wrap">
+      <button
+        className="button primary new-button"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <FolderPlus size={15} />
+        New
+      </button>
+      {open && (
+        <div className="new-menu">
+          <button
+            onClick={() => {
+              onFolder();
+              setOpen(false);
+            }}
+          >
+            New folder
+          </button>
+          <span className="menu-separator" />
+          <label>
+            Upload file
+            <input
+              hidden
+              type="file"
+              multiple
+              onChange={(event) => {
+                upload(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          <label>
+            Upload folder
+            <input
+              hidden
+              type="file"
+              multiple
+              onChange={(event) => {
+                upload(event.target.files);
+                event.target.value = "";
+              }}
+              {...({ webkitdirectory: "", directory: "" } as Record<
+                string,
+                string
+              >)}
+            />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+function FolderCard({
+  item,
+  selected,
+  onSelect,
+  onOpen,
+  onContextMenu,
+}: {
+  item: CloudItem;
+  selected: boolean;
+  onSelect: (item: CloudItem, additive?: boolean) => void;
+  onOpen: (item: CloudItem) => void;
+  onContextMenu: (item: CloudItem, event: React.MouseEvent) => void;
+}) {
+  return (
+    <article
+      className={`folder-browser-card ${selected ? "selected" : ""}`}
+      onContextMenu={(event) => onContextMenu(item, event)}
+      onClick={(event) => onSelect(item, event.metaKey || event.ctrlKey)}
+      onDoubleClick={() => onOpen(item)}
+    >
+      <ItemIcon item={item} open />
+      <div className="browser-card-copy">
+        <strong>{item.name}</strong>
+        <span>{formatRelative(item.updatedAt).toLowerCase()}</span>
+      </div>
+      <button
+        className="icon-button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onContextMenu(item, event);
+        }}
+        aria-label={`More actions for ${item.name}`}
+      >
+        <MoreHorizontal size={17} />
+      </button>
+    </article>
+  );
+}
+function FileCard({
+  item,
+  selected,
+  onSelect,
+  onOpen,
+  onContextMenu,
+  onStar,
+}: {
+  item: CloudItem;
+  selected: boolean;
+  onSelect: (item: CloudItem, additive?: boolean) => void;
+  onOpen: (item: CloudItem) => void;
+  onContextMenu: (item: CloudItem, event: React.MouseEvent) => void;
+  onStar: (id: string) => void;
+}) {
+  return (
+    <article
+      className={`file-browser-card ${selected ? "selected" : ""}`}
+      onContextMenu={(event) => onContextMenu(item, event)}
+      onClick={(event) => onSelect(item, event.metaKey || event.ctrlKey)}
+      onDoubleClick={() => onOpen(item)}
+    >
+      <div className="file-card-top">
+        <div className="file-card-title">
+          <ItemIcon item={item} />
+          <strong title={item.name}>{item.name}</strong>
+        </div>
+        <button
+          className="icon-button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onContextMenu(item, event);
+          }}
+          aria-label={`More actions for ${item.name}`}
+        >
+          <MoreHorizontal size={17} />
+        </button>
+      </div>
+      <button
+        className="browser-preview-button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpen(item);
+        }}
+      >
+        <FilePreview item={item} />
+      </button>
+      <div className="file-card-meta">
+        <span>
+          {item.extension.toUpperCase()} · {formatBytes(item.size)}
+        </span>
+        <button
+          className="icon-button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onStar(item.id);
+          }}
+          aria-label={
+            item.starred ? `Unstar ${item.name}` : `Star ${item.name}`
+          }
+        >
+          <Star size={15} fill={item.starred ? "currentColor" : "none"} />
+        </button>
+      </div>
+    </article>
+  );
+}
+function UnifiedFileList({
+  items,
+  selected,
+  onSelect,
+  onOpen,
+  onContextMenu,
+  onStar,
+  onTrash,
+  onDetails,
+}: {
+  items: CloudItem[];
+  selected: string[];
+  onSelect: (item: CloudItem, additive?: boolean) => void;
+  onOpen: (item: CloudItem) => void;
+  onContextMenu: (item: CloudItem, event: React.MouseEvent) => void;
+  onStar: (id: string) => void;
+  onTrash: (id: string) => void;
+  onDetails: (item: CloudItem) => void;
+}) {
+  void onTrash;
+  void onDetails;
+  return (
+    <div className="file-table-wrap browser-list">
+      <table className="file-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Size</th>
+            <th>Modified</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr
+              className={selected.includes(item.id) ? "selected-row" : ""}
+              key={item.id}
+              onContextMenu={(event) => onContextMenu(item, event)}
+              onClick={(event) =>
+                onSelect(item, event.metaKey || event.ctrlKey)
+              }
+              onDoubleClick={() => onOpen(item)}
+            >
+              <td>
+                <button
+                  className="name-cell"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpen(item);
+                  }}
+                >
+                  <ItemIcon item={item} />
+                  <span>{item.name}</span>
+                  {item.starred && (
+                    <Star size={13} className="starred" fill="currentColor" />
+                  )}
+                </button>
+              </td>
+              <td className="muted-cell">
+                {item.kind === "folder"
+                  ? "Folder"
+                  : item.extension.toUpperCase()}
+              </td>
+              <td className="muted-cell">{formatBytes(item.size)}</td>
+              <td className="muted-cell">{formatRelative(item.updatedAt)}</td>
+              <td>
+                <div className="row-actions">
+                  <button
+                    className="icon-button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onStar(item.id);
+                    }}
+                    aria-label={`Star ${item.name}`}
+                  >
+                    <Star
+                      size={16}
+                      fill={item.starred ? "currentColor" : "none"}
+                    />
+                  </button>
+                  <button
+                    className="icon-button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onContextMenu(item, event);
+                    }}
+                    aria-label={`More actions for ${item.name}`}
+                  >
+                    <MoreHorizontal size={17} />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+function ContextMenu({
+  item,
+  x,
+  y,
+  onClose,
+  onOpen,
+  onShowFolder,
+  onStar,
+  onRename,
+  onMove,
+  onCopy,
+  onShare,
+  onTrash,
+  onDetails,
+}: {
+  item: CloudItem;
+  x: number;
+  y: number;
+  onClose: () => void;
+  onOpen: () => void;
+  onShowFolder: () => void;
+  onStar: () => void;
+  onRename: () => void;
+  onMove: () => void;
+  onCopy: () => void;
+  onShare: () => void;
+  onTrash: () => void;
+  onDetails: () => void;
+}) {
+  return (
+    <FileContextMenu
+      item={item}
+      x={x}
+      y={y}
+      onClose={onClose}
+      groups={[
+        [
+          {
+            id: "open",
+            label: item.kind === "file" ? "Preview" : "Open",
+            onSelect: onOpen,
+          },
+          {
+            id: "show-folder",
+            label: "Show in folder",
+            onSelect: onShowFolder,
+          },
+          {
+            id: "download",
+            label: "Download",
+            onSelect: () => downloadItem(item),
+          },
+        ],
+        [
+          { id: "share", label: "Share", onSelect: onShare },
+          {
+            id: "star",
+            label: item.starred ? "Unstar" : "Star",
+            onSelect: onStar,
+          },
+          { id: "rename", label: "Rename", onSelect: onRename },
+          { id: "move", label: "Move", onSelect: onMove },
+          { id: "copy", label: "Copy", onSelect: onCopy },
+        ],
+        [{ id: "properties", label: "Details", onSelect: onDetails }],
+        [
+          {
+            id: "trash",
+            label: "Move to Trash",
+            onSelect: onTrash,
+            destructive: true,
+          },
+        ],
+      ]}
+    />
+  );
+}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AuthBackLink, AuthField, AuthNotice, AuthPanel, PasswordField } from '@/components/auth/AuthShell'
 import { SystemStateContent } from '@/components/system/SystemState'
@@ -57,8 +57,10 @@ export function ResetPasswordPageClient() {
 export function MaintenancePageClient() {
   const auth = useAuthStore()
   const router = useRouter()
+  const [maintenanceMessage, setMaintenanceMessage] = useState('')
   const isAdmin = auth.currentUser?.role === 'admin'
-  return <AuthPanel eyebrow="Drive availability"><SystemStateContent icon="cloud-cog" title="Drive is under maintenance" description="Drive is temporarily unavailable while maintenance is in progress." primaryAction={isAdmin ? { label: 'Continue as administrator', onClick: () => router.push('/home') } : { label: 'Back to sign in', href: '/login' }} /></AuthPanel>
+  useEffect(() => { const timer = window.setTimeout(() => { try { const message = window.sessionStorage.getItem('drive-maintenance-message'); if (message) setMaintenanceMessage(message); window.sessionStorage.removeItem('drive-maintenance-message') } catch { /* Use the generic message when browser storage is unavailable. */ } }, 0); return () => window.clearTimeout(timer) }, [])
+  return <AuthPanel eyebrow="Ketersediaan Drive"><SystemStateContent icon="cloud-cog" title="Drive sedang dalam pemeliharaan" description={maintenanceMessage || 'Drive sementara tidak tersedia selama pemeliharaan.'} primaryAction={isAdmin ? { label: 'Lanjut sebagai administrator', onClick: () => router.push('/home') } : { label: 'Kembali ke halaman masuk', href: '/login' }} /></AuthPanel>
 }
 
 export function AccountDisabledPageClient() {

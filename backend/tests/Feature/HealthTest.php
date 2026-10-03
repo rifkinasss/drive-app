@@ -15,8 +15,13 @@ class HealthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.status', 'ok')
-            ->assertJsonPath('data.service', 'cloud-api')
-            ->assertJsonPath('data.checks.database', 'ok');
+            ->assertJsonPath('data.version', '2.0.0')
+            ->assertJsonPath('data.services.database.status', 'connected')
+            ->assertJsonPath('data.services.storage.status', 'active')
+            ->assertJsonPath('data.services.queue.status', 'active')
+            ->assertJsonPath('data.services.queue.driver', 'database')
+            ->assertJsonMissingPath('data.services.storage.path')
+            ->assertJsonMissingPath('data.services.database.host');
     }
 
     public function test_unknown_api_route_returns_consistent_json(): void

@@ -88,6 +88,18 @@ class AuthTest extends TestCase
             ->assertJsonPath('success', false);
     }
 
+    public function test_current_user_returns_json_401_without_an_accept_header(): void
+    {
+        $this->get('/api/auth/user')
+            ->assertUnauthorized()
+            ->assertHeader('Content-Type', 'application/json')
+            ->assertExactJson([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+                'errors' => [],
+            ]);
+    }
+
     public function test_authenticated_user_can_update_only_their_display_name(): void
     {
         $user = User::factory()->create(['name' => 'Before']);

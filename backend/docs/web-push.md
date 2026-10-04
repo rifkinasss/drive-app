@@ -20,6 +20,16 @@ Expose only the public key to the frontend as `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Ke
 
 Supported push events are share received/permission changes/revocations and quota warnings. Payloads contain only a short message, type, and safe internal destination. Expired subscriptions are removed after a failed delivery.
 
+## Local test
+
+After a local user has enabled Push Notifications and the backend has local VAPID values, send a test notification with:
+
+```bash
+php artisan cloud:push-test <user-id-or-email>
+```
+
+This command is guarded to run only when `APP_ENV` is `local` or `testing`; it is not available as a production push tool.
+
 ## Deployment checklist
 
 When deploying a new environment, generate a VAPID key pair from the backend directory:

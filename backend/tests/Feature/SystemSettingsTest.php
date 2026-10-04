@@ -25,10 +25,10 @@ class SystemSettingsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.settings.instanceName', 'Drive by NasLabs');
 
-        $this->patchJson('/api/admin/settings/general', ['instanceName' => 'NasLabs Cloud'])
+        $this->patchJson('/api/admin/settings/general', ['instanceName' => 'NasLabs Drive'])
             ->assertOk()
-            ->assertJsonPath('data.settings.instanceName', 'NasLabs Cloud');
-        $this->getJson('/api/admin/settings/general')->assertJsonPath('data.settings.instanceName', 'NasLabs Cloud');
+            ->assertJsonPath('data.settings.instanceName', 'NasLabs Drive');
+        $this->getJson('/api/admin/settings/general')->assertJsonPath('data.settings.instanceName', 'NasLabs Drive');
         $this->assertDatabaseHas('system_settings', ['key' => 'general.instance_name', 'updated_by' => $admin->id]);
     }
 

@@ -86,8 +86,8 @@ async function parseError(response: Response): Promise<ApiError> {
     401: "Your session has expired. Please sign in again.",
     403: "You do not have permission to perform this action.",
     404: "The requested item could not be found.",
-    419: "Your secure session expired. Refresh and try again.",
-    500: "Drive could not complete the request.",
+    419: "Sesi keamanan berakhir. Muat ulang halaman lalu coba lagi.",
+    500: "Terjadi kesalahan pada server. Coba lagi.",
     503: "Drive is temporarily unavailable. Please try again shortly.",
   };
   return new ApiError({

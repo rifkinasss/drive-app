@@ -21,6 +21,7 @@ import {
 import { FilePreview } from "@/components/files/FilePreview";
 import { FileViewer } from "@/components/files/FileViewer";
 import { FileNotFoundState } from "@/components/system/FileNotFoundState";
+import { DataErrorState } from "@/components/system/DataState";
 import { ItemIcon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { formatBytes, formatRelative } from "@/lib/format";
@@ -200,6 +201,8 @@ export function MyFilesView({
         <FileNotFoundState kind="folder" />
       </div>
     );
+  if (store.domainErrors.browser)
+    return <div className="files-workspace"><DataErrorState message={store.domainErrors.browser} onRetry={() => void store.refresh(["browser"])} /></div>;
   return (
     <div
       className="files-workspace"

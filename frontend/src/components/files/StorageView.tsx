@@ -7,6 +7,7 @@ import { StorageCleanup } from '@/components/files/StorageCleanup'
 import { formatBytes, percentageOf } from '@/lib/format'
 import type { useCloudStore } from '@/stores/cloud-store'
 import { filesApi as cloudService } from '@/features/files/api/files.api'
+import { DataErrorState } from '@/components/system/DataState'
 
 type Store = ReturnType<typeof useCloudStore>
 const categoryIcons: Record<string, typeof FileText> = { Documents: FileText, Images: Image, Videos: PlaySquare, Archives: Archive, Backups: Database, Code: Code2, Other: FolderOpen, Trash: Trash2 }
@@ -18,6 +19,8 @@ export function StorageView({ store }: { store: Store }) {
   const largest = store.storage.largestFiles
   const categories = Object.entries(store.storage.categories)
   const status = percentage > 85 ? { label: 'Storage is running low', tone: 'warning' } : percentage > 70 ? { label: 'Getting full', tone: 'notice' } : { label: 'Healthy', tone: 'healthy' }
+
+  if (store.domainErrors.storage) return <div className="storage-workspace"><DataErrorState message={store.domainErrors.storage} onRetry={() => void store.refresh(['storage'])} /></div>
 
   return <div className="storage-workspace">
     <div className="storage-header">

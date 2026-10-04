@@ -8,6 +8,8 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { CloudActivity, CloudItem, StorageApiSummary, UploadTask } from "@/types/cloud";
 
 type CloudStore = ReturnType<typeof useCloudStoreValue>;
+type DataDomain = "browser" | "storage" | "trash" | "recent" | "starred" | "activity";
+type DomainErrors = Record<DataDomain, string>;
 const CloudContext = createContext<CloudStore | null>(null);
 
 export function CloudStoreProvider({ children }: { children: React.ReactNode }) {
@@ -35,40 +37,51 @@ function useCloudStoreValue() {
   const [activities, setActivities] = useState<CloudActivity[]>([]);
   const [storageSummary, setStorageSummary] = useState<StorageApiSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [domainErrors, setDomainErrors] = useState<DomainErrors>({ browser: "", storage: "", trash: "", recent: "", starred: "", activity: "" });
   const [view, setView] = useState<"list" | "grid">("grid");
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
   const uploads = useRef(new Map<string, AbortController>());
   const { theme: selectedTheme, setTheme } = useThemePreference();
   const theme: "light" | "dark" | "system" = selectedTheme === "light" || selectedTheme === "dark" ? selectedTheme : "system";
 
-  const refresh = useCallback(async (domains: Array<"browser" | "storage" | "trash" | "recent" | "starred" | "activity"> = ["browser", "storage", "trash", "recent", "starred", "activity"]) => {
+  const refresh = useCallback(async (domains: DataDomain[] = ["browser", "storage", "trash", "recent", "starred", "activity"]) => {
     if (!userId) return;
     setError("");
+    setIsRefreshing(true);
+    setDomainErrors((current) => domains.reduce((next, domain) => ({ ...next, [domain]: "" }), current));
     const requests = domains.map(async (domain) => {
-      switch (domain) {
-        case "browser": { setItems((await cloudService.getBrowser(userId, folderId)).items); setSearchItems(null); break; }
-        case "storage": setStorageSummary(await cloudService.getStorage(userId)); break;
-        case "trash": setTrashItems(await cloudService.getTrash(userId)); break;
-        case "recent": setRecentItems(await cloudService.getRecent(userId)); break;
-        case "starred": setStarredItems(await cloudService.getStarred(userId)); break;
-        case "activity": setActivities(await cloudService.getActivity()); break;
+      try {
+        switch (domain) {
+          case "browser": { setItems((await cloudService.getBrowser(userId, folderId)).items); setSearchItems(null); break; }
+          case "storage": setStorageSummary(await cloudService.getStorage(userId)); break;
+          case "trash": setTrashItems(await cloudService.getTrash(userId)); break;
+          case "recent": setRecentItems(await cloudService.getRecent(userId)); break;
+          case "starred": setStarredItems(await cloudService.getStarred(userId)); break;
+          case "activity": setActivities(await cloudService.getActivity()); break;
+        }
+      } catch (reason) {
+        const message = reason instanceof Error ? reason.message : "Unable to load Drive data.";
+        setDomainErrors((current) => ({ ...current, [domain]: message }));
+        throw reason;
       }
     });
     const results = await Promise.allSettled(requests);
     const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
     if (failure) setError(failure.reason instanceof Error ? failure.reason.message : "Unable to load Drive data.");
+    setIsRefreshing(false);
   }, [folderId, userId]);
 
   // The store resets and refreshes when the authenticated account changes.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!userId) { setItems([]); setRecentItems([]); setStarredItems([]); setTrashItems([]); setActivities([]); setStorageSummary(null); setLoading(false); return; }
+    if (!userId) { setItems([]); setRecentItems([]); setStarredItems([]); setTrashItems([]); setActivities([]); setStorageSummary(null); setDomainErrors({ browser: "", storage: "", trash: "", recent: "", starred: "", activity: "" }); setLoading(false); return; }
     setLoading(true);
-    void refresh().finally(() => setLoading(false));
+    void refresh().finally(() => { setLoading(false); setIsRefreshing(false); });
   }, [refresh, userId]);
 
-  const run = useCallback(async (operation: () => Promise<void>, domains: Array<"browser" | "storage" | "trash" | "recent" | "starred" | "activity">) => {
+  const run = useCallback(async (operation: () => Promise<void>, domains: DataDomain[]) => {
     setError("");
     try { await operation(); await refresh(domains); return true; }
     catch (reason) { setError(reason instanceof Error ? reason.message : "The request failed."); return false; }
@@ -103,8 +116,7 @@ function useCloudStoreValue() {
     setUploadTasks((current) => [...current, task]);
     setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "uploading" } : entry));
     void cloudService.upload(file, targetFolderId, "ask", controller.signal, (progress) => setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, progress } : entry)))
-      .then(() => refresh(["browser", "storage", "recent", "starred", "activity"]))
-      .then(() => setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "completed", progress: 100 } : entry)))
+      .then(() => { setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "completed", progress: 100 } : entry)); void refresh(["browser", "storage", "recent", "starred", "activity"]).catch(() => undefined); })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
         const conflict = (reason as { status?: number }).status === 409;
@@ -119,8 +131,7 @@ function useCloudStoreValue() {
     setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "uploading", error: undefined, progress: 0 } : entry));
     const controller = new AbortController(); uploads.current.set(id, controller);
     void cloudService.upload(task.file, task.targetFolderId, "ask", controller.signal, (progress) => setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, progress } : entry)))
-      .then(() => refresh(["browser", "storage", "recent", "starred", "activity"]))
-      .then(() => setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "completed", progress: 100 } : entry)))
+      .then(() => { setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "completed", progress: 100 } : entry)); void refresh(["browser", "storage", "recent", "starred", "activity"]).catch(() => undefined); })
       .catch((reason: unknown) => setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "failed", error: reason instanceof Error ? reason.message : "Upload failed." } : entry)))
       .finally(() => uploads.current.delete(id));
   }, [refresh, uploadTasks]);
@@ -132,8 +143,7 @@ function useCloudStoreValue() {
     const controller = new AbortController(); uploads.current.set(id, controller);
     setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "uploading", error: undefined, progress: 0 } : entry));
     void cloudService.upload(task.file, task.targetFolderId, strategy, controller.signal, (progress) => setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, progress } : entry)))
-      .then(() => refresh(["browser", "storage", "recent", "starred", "activity"]))
-      .then(() => setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "completed", progress: 100, conflict: false } : entry)))
+      .then(() => { setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "completed", progress: 100, conflict: false } : entry)); void refresh(["browser", "storage", "recent", "starred", "activity"]).catch(() => undefined); })
       .catch((reason: unknown) => setUploadTasks((current) => current.map((entry) => entry.id === id ? { ...entry, status: "failed", error: reason instanceof Error ? reason.message : "Upload failed." } : entry)))
       .finally(() => uploads.current.delete(id));
   }, [refresh, uploadTasks]);
@@ -147,5 +157,5 @@ function useCloudStoreValue() {
   }, [folderId, userId]);
   const addActivity = useCallback(() => undefined, []);
   const copy = useCallback(() => { setError("Copying files is not available in the backend yet."); return false; }, []);
-  return { items, activeItems, searchItems, search, recentItems, starredItems, trashItems, activities, loading, error, clearError: () => setError(""), theme, setTheme, view, setView, toggleStar, createFolder, rename, move, copy, moveToTrash, restore, deletePermanently, bulkStar, bulkTrash, bulkRestore, bulkDeletePermanently, bulkDownload, emptyTrash, upload, uploadTasks, cancelUpload, retryUpload, resolveUpload, dismissUpload, storage, addActivity, refresh, setFolder };
+  return { items, activeItems, searchItems, search, recentItems, starredItems, trashItems, activities, loading, isRefreshing, error, domainErrors, clearError: () => setError(""), theme, setTheme, view, setView, toggleStar, createFolder, rename, move, copy, moveToTrash, restore, deletePermanently, bulkStar, bulkTrash, bulkRestore, bulkDeletePermanently, bulkDownload, emptyTrash, upload, uploadTasks, cancelUpload, retryUpload, resolveUpload, dismissUpload, storage, addActivity, refresh, setFolder };
 }

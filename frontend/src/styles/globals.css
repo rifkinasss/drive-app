@@ -42,7 +42,7 @@ html, body { height:100%; overflow:hidden; }
 .page-scroll { min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
 @media (max-width:760px) { .sidebar { height:100dvh; max-height:100dvh; } }
 
-/* Cloud brand layer aligned with Blog by NasLabs: blue interaction, cool neutral workspace. */
+/* Drive brand layer aligned with Blog by NasLabs: blue interaction, cool neutral workspace. */
 :root { --primary:#3B52E2; --primary-foreground:#fff; --secondary:#1E293B; --secondary-foreground:#fff; --muted:#64748B; --muted-foreground:#64748B; --background:#F4F7FB; --foreground:#0F172A; --surface:#FBFDFF; --surface-2:#EDF2F8; --border:#D8E1EC; --accent:var(--primary); --accent-soft:#E8ECFF; --ink:var(--foreground); --bg:var(--background); --line:var(--border); --faint:#94A3B8; --sidebar:#EEF3F9; --danger:#B45353; }
 [data-theme='dark'] { --background:#0F172A; --foreground:#F8FAFC; --surface:#172238; --surface-2:#202E46; --border:#334155; --muted:#94A3B8; --muted-foreground:#94A3B8; --faint:#64748B; --accent:#6D7FF0; --accent-soft:#26315D; --sidebar:#111C31; --danger:#E17A7A; }
 body { background:var(--background); color:var(--foreground); font-family:var(--font-poppins),system-ui,sans-serif; }

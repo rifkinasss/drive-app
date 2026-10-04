@@ -8,7 +8,7 @@ Repository ini memuat frontend web dan backend API dalam satu direktori. Fronten
 
 ## Untuk siapa
 
-Cloud ditujukan bagi individu dan tim kecil yang perlu menyimpan file, mengaturnya dalam folder, dan mengendalikan siapa yang dapat melihat atau mengunduhnya. Admin mengelola akun, kuota, dan pengaturan aplikasi. Setiap akun memiliki ruang file sendiri; peran admin tidak memberikan akses otomatis ke file pengguna lain.
+Drive ditujukan bagi individu dan tim kecil yang perlu menyimpan file, mengaturnya dalam folder, dan mengendalikan siapa yang dapat melihat atau mengunduhnya. Admin mengelola akun, kuota, dan pengaturan aplikasi. Setiap akun memiliki ruang file sendiri; peran admin tidak memberikan akses otomatis ke file pengguna lain.
 
 ## Kemampuan produk
 
@@ -128,7 +128,7 @@ Salin template lingkungan, lalu isi nilai yang sesuai. Jangan commit file `.env`
 | File dan kuota | `CLOUD_STORAGE_DISK`, `CLOUD_STORAGE_ROOT`, `CLOUD_MAX_UPLOAD_SIZE_BYTES`, `CLOUD_DEFAULT_USER_QUOTA_BYTES` |
 | Queue dan mail | `QUEUE_CONNECTION`, `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` |
 
-`NEXT_PUBLIC_API_URL` adalah origin API tanpa akhiran `/api`. Untuk deployment, gunakan HTTPS dan domain frontend/API yang benar. Atur domain cookie Sanctum, daftar origin CORS, serta proxy tepercaya sesuai topologi aktual. Simpan storage Cloud di luar webroot dan gunakan lokasi privat yang persisten.
+`NEXT_PUBLIC_API_URL` adalah origin API tanpa akhiran `/api`. Untuk deployment, gunakan HTTPS dan domain frontend/API yang benar. Atur domain cookie Sanctum, daftar origin CORS, serta proxy tepercaya sesuai topologi aktual. Simpan storage Drive di luar webroot dan gunakan lokasi privat yang persisten.
 
 ## Pengujian dan dokumentasi API
 

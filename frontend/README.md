@@ -7,12 +7,12 @@ Local development:
 
 ```sh
 # Backend (PostgreSQL must be running)
-cd ../Cloud-V2-Backend
+cd ../backend
 php artisan serve --host=localhost --port=8000
 php artisan queue:work
 
 # Frontend
-cd ../Cloud-V2
+cd ../frontend
 npm install
 npm run dev
 ```

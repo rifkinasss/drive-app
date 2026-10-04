@@ -22,6 +22,19 @@ export const pushService = {
     if (!this.supported()) return "unsupported";
     return Notification.permission;
   },
+  async state(): Promise<PushState> {
+    const permission = this.permission();
+    if (permission !== "granted") return permission;
+
+    try {
+      const registration = await navigator.serviceWorker.getRegistration("/");
+      if (!registration) return "default";
+      const subscription = await registration.pushManager.getSubscription();
+      return subscription ? "granted" : "default";
+    } catch {
+      return "default";
+    }
+  },
   async subscribe(): Promise<void> {
     if (!this.supported())
       throw new Error("Push notifications are not supported by this browser.");
@@ -31,7 +44,12 @@ export const pushService = {
         "Push notifications are not configured for this environment.",
       );
     const registration = await navigator.serviceWorker.ready;
-    const permission = await Notification.requestPermission();
+    if (Notification.permission === "denied")
+      throw new Error("Push notifications are blocked in this browser.");
+    const permission =
+      Notification.permission === "granted"
+        ? "granted"
+        : await Notification.requestPermission();
     if (permission !== "granted")
       throw new Error(
         permission === "denied"

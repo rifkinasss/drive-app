@@ -8,8 +8,11 @@ self.addEventListener('push', (event) => {
 })
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const requested = new URL(event.notification.data?.url || '/home', self.location.origin)
-  const target = (requested.origin === self.location.origin && requested.pathname.startsWith('/')) ? requested.href : new URL('/home', self.location.origin).href
+  let target = new URL('/home', self.location.origin).href
+  try {
+    const requested = new URL(typeof event.notification.data?.url === 'string' ? event.notification.data.url : '/home', self.location.origin)
+    if (requested.origin === self.location.origin && requested.pathname.startsWith('/') && !requested.pathname.startsWith('//')) target = requested.href
+  } catch { /* keep the safe fallback */ }
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
     const existing = clients.find((client) => 'focus' in client)
     if (existing) { existing.navigate(target); return existing.focus() }

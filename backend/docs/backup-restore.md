@@ -1,4 +1,4 @@
-# Cloud backup and restore runbook
+# Drive backup and restore runbook
 
 This is an operations procedure, not an application backup engine. Backup sets contain personal data and credentials/hashes; store them outside the webroot and source repository with restrictive access. Production backup-at-rest encryption and an offsite copy are required before relying on this for production recovery. This runbook does not configure a scheduler or deployment host.
 
@@ -37,7 +37,7 @@ Generate a JSON manifest with backup ID/time, app revision if available, source 
 
 ## Isolated restore and validation
 
-Choose a new disposable database name and a new empty storage root explicitly. Verify the database does not already exist and the path is not the active Cloud root. Never use the development/production database as the restore target.
+Choose a new disposable database name and a new empty storage root explicitly. Verify the database does not already exist and the path is not the active Drive storage root. Never use the development/production database as the restore target.
 
 1. Verify `SHA256SUMS`; stop on any mismatch.
 2. Create an empty restore database owned by the intended local role, then run `pg_restore --exit-on-error --no-owner --no-privileges --dbname="$RESTORE_DB" "$DB_DUMP"`. Do not use `--clean` or point at the source DB.
@@ -61,4 +61,4 @@ Any restore error, count mismatch, missing file, quota discrepancy, failed login
 
 ## Drill record
 
-The 2026-09-19 local drill record and non-secret manifests are stored with dumps/archives/checksums in the private temporary backup directory reported in the phase handoff. The original source was `APP_ENV=local`, PostgreSQL 18.4, with four users and no file rows or physical Cloud objects. The root fallback was corrected so empty legacy root variables resolve to the documented `storage/app/cloud` default. A second, explicitly synthetic fixture set was created only inside the isolated restored environment; it contained one small file and one public link. That fixture set was independently restored, table counts matched, the file checksum matched metadata, and the encrypted public token decrypted/resolved using the same APP_KEY. No production-like source was mutated. No maintenance/write freeze was simulated; source counts were unchanged across the backup window, and there were no file payloads or pending jobs. A production backup still requires the write freeze described above. The original source snapshot had no invitations, settings, or stored encrypted application values, so those source-state cases remain unrepresented. The recorded backup artifacts are not encrypted at rest.
+The 2026-09-19 local drill record and non-secret manifests are stored with dumps/archives/checksums in the private temporary backup directory reported in the phase handoff. The original source was `APP_ENV=local`, PostgreSQL 18.4, with four users and no file rows or physical Drive storage objects. The root fallback was corrected so empty legacy root variables resolve to the documented `storage/app/cloud` default. A second, explicitly synthetic fixture set was created only inside the isolated restored environment; it contained one small file and one public link. That fixture set was independently restored, table counts matched, the file checksum matched metadata, and the encrypted public token decrypted/resolved using the same APP_KEY. No production-like source was mutated. No maintenance/write freeze was simulated; source counts were unchanged across the backup window, and there were no file payloads or pending jobs. A production backup still requires the write freeze described above. The original source snapshot had no invitations, settings, or stored encrypted application values, so those source-state cases remain unrepresented. The recorded backup artifacts are not encrypted at rest.

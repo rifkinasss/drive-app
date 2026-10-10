@@ -1,6 +1,7 @@
 export function formatBytes(bytes: number): string {
   const numericBytes = Number(bytes);
-  if (!Number.isFinite(numericBytes) || numericBytes <= 0) return "—";
+  if (!Number.isFinite(numericBytes) || numericBytes < 0) return "—";
+  if (numericBytes === 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
   const index = Math.min(
     Math.floor(Math.log(numericBytes) / Math.log(1024)),

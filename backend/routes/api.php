@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminOverviewController;
+use App\Http\Controllers\Admin\AdminUserPasswordController;
 use App\Http\Controllers\Admin\AdminUserPasswordResetController;
 use App\Http\Controllers\Admin\AdminUserStatusController;
 use App\Http\Controllers\Admin\AdminUserSummaryController;
@@ -169,7 +170,10 @@ Route::prefix('admin/users')
         Route::patch('/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
         Route::post('/{user}/disable', [AdminUserStatusController::class, 'disable'])->name('admin.users.disable');
         Route::post('/{user}/enable', [AdminUserStatusController::class, 'enable'])->name('admin.users.enable');
+        Route::post('/{user}/verify', [AdminUserStatusController::class, 'verify'])->name('admin.users.verify');
+        Route::post('/{user}/unverify', [AdminUserStatusController::class, 'unverify'])->name('admin.users.unverify');
         Route::post('/{user}/password-reset', AdminUserPasswordResetController::class)->middleware('throttle:mail-resend')->name('admin.users.password-reset');
+        Route::post('/{user}/password', [AdminUserPasswordController::class, '__invoke'])->name('admin.users.password.set');
         Route::delete('/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
         Route::post('/{user}/invitation/resend', [UserSetupController::class, 'resendInvitation'])->middleware('throttle:mail-resend')->name('admin.users.invitations.resend');
         Route::post('/{user}/invitation/regenerate', [UserSetupController::class, 'regenerateInvitation'])->middleware('throttle:mail-resend')->name('admin.users.invitations.regenerate');

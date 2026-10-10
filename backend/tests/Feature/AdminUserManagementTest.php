@@ -62,6 +62,24 @@ class AdminUserManagementTest extends TestCase
             ->assertStatus(409)->assertJsonPath('code', 'LAST_ADMIN_REQUIRED');
     }
 
+    public function test_admin_can_verify_and_unverify_email(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $target = User::factory()->create(['email_verified_at' => null]);
+        $this->actingAs($admin, 'sanctum');
+
+        $this->postJson('/api/admin/users/'.$target->id.'/verify')
+            ->assertOk()
+            ->assertJsonPath('data.emailVerifiedAt', fn ($v) => $v !== null);
+        $this->assertNotNull($target->fresh()->email_verified_at);
+
+        $this->postJson('/api/admin/users/'.$target->id.'/unverify')->assertOk();
+        $this->assertNull($target->fresh()->email_verified_at);
+
+        $this->postJson('/api/admin/users/'.$admin->id.'/unverify')
+            ->assertStatus(409)->assertJsonPath('code', 'CANNOT_UNVERIFY_SELF');
+    }
+
     public function test_admin_can_disable_enable_and_request_reset_for_active_user(): void
     {
         Notification::fake();

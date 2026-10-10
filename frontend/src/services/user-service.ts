@@ -44,7 +44,10 @@ export const userService = {
   async resendInvitation(id: string): Promise<void> { await api.post(`/api/admin/users/${encodeURIComponent(id)}/invitation/resend`); },
   async regenerateInvitation(id: string): Promise<void> { await api.post(`/api/admin/users/${encodeURIComponent(id)}/invitation/regenerate`); },
   async resendVerification(id: string): Promise<void> { await api.post(`/api/admin/users/${encodeURIComponent(id)}/verification/resend`); },
+  async verifyEmail(id: string): Promise<CloudUser> { return mapUser(await api.post<Record<string, unknown>>(`/api/admin/users/${encodeURIComponent(id)}/verify`)); },
+  async unverifyEmail(id: string): Promise<CloudUser> { return mapUser(await api.post<Record<string, unknown>>(`/api/admin/users/${encodeURIComponent(id)}/unverify`)); },
   async sendPasswordReset(id: string): Promise<void> { await api.post(`/api/admin/users/${encodeURIComponent(id)}/password-reset`); },
+  async setPassword(id: string, password: string): Promise<CloudUser> { return mapUser(await api.post<Record<string, unknown>>(`/api/admin/users/${encodeURIComponent(id)}/password`, { password, password_confirmation: password })); },
 };
 
 export { mapUser as mapCloudUser };

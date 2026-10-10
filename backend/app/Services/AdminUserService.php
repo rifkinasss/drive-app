@@ -148,6 +148,47 @@ class AdminUserService
         });
     }
 
+    public function verifyEmail(User $target): User
+    {
+        return DB::transaction(function () use ($target): User {
+            $user = User::query()->whereKey($target->getKey())->lockForUpdate()->firstOrFail();
+            if ($user->email_verified_at === null) {
+                $user->forceFill(['email_verified_at' => now()])->save();
+            }
+
+            return $user->fresh();
+        });
+    }
+
+    public function unverifyEmail(User $actor, User $target): User
+    {
+        return DB::transaction(function () use ($actor, $target): User {
+            if ($actor->is($target)) {
+                throw new AdminUserException('CANNOT_UNVERIFY_SELF', 'You cannot remove verification from your own account.', [], 409);
+            }
+            $user = User::query()->whereKey($target->getKey())->lockForUpdate()->firstOrFail();
+            if ($user->email_verified_at !== null) {
+                $user->forceFill(['email_verified_at' => null])->save();
+            }
+
+            return $user->fresh();
+        });
+    }
+
+    public function setPassword(User $actor, User $target, string $password): User
+    {
+        return DB::transaction(function () use ($actor, $target, $password): User {
+            if ($actor->is($target)) {
+                throw new AdminUserException('CANNOT_SET_OWN_PASSWORD', 'Use the profile security settings to change your own password.', [], 409);
+            }
+            $user = User::query()->whereKey($target->getKey())->lockForUpdate()->firstOrFail();
+            $user->forceFill(['password' => $password])->save();
+            DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+
+            return $user->fresh();
+        });
+    }
+
     public function sendPasswordReset(User $target): void
     {
         if ($target->status !== UserStatus::Active) {

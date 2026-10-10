@@ -31,6 +31,8 @@ import { useUserStore } from "@/stores/user-store";
 import { FileContextMenu } from "@/components/files/FileContextMenu";
 import { FileDetailsPanel } from "@/components/files/FileDetailsPanel";
 import { ShareDialog } from "@/components/files/ShareDialog";
+import { NewMenu } from "@/components/files/NewMenu";
+import { CreateFolderModal } from "@/components/files/CreateFolderModal";
 import { filesApi as cloudService } from "@/features/files/api/files.api";
 
 type Store = ReturnType<typeof useCloudStore>;
@@ -175,7 +177,7 @@ export function MyFilesView({
     setStarredOnly(false);
   };
   const moveSelected = async () => {
-    await Promise.all(selected.map((id) => store.move(id, moveTarget)));
+    await Promise.all(selected.map((id) => store.move(id, moveTarget))); setSelected([]);
     setSelected([]);
     setBulkMoveOpen(false);
   };
@@ -235,12 +237,8 @@ export function MyFilesView({
           />
         </div>
         <NewMenu
-          store={store}
-          folderId={folderId}
-          onFolder={() => {
-            setModal("folder");
-            setName("");
-          }}
+          onNewFolder={() => setModal("folder")}
+          onUploadFiles={(files) => uploadFiles(files)}
         />
       </div>
       <div className="files-toolbar">
@@ -421,7 +419,7 @@ export function MyFilesView({
             <FolderPlus size={15} />
             Move
           </button>
-          <button onClick={() => void store.bulkTrash(selected)}>
+          <button onClick={async () => { await store.bulkTrash(selected); setSelected([]); }}>
             <Trash2 size={15} />
             Move to trash
           </button>
@@ -639,41 +637,11 @@ export function MyFilesView({
         </Modal>
       )}
       {modal === "folder" && (
-        <Modal title="New folder" onClose={closeModal}>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (name.trim()) {
-                store.createFolder(name.trim(), folderId);
-                closeModal();
-              }
-            }}
-          >
-            <label className="field-label" htmlFor="files-folder-name">
-              Folder name
-            </label>
-            <input
-              id="files-folder-name"
-              autoFocus
-              className="text-input"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="e.g. Reference material"
-            />
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="button secondary"
-                onClick={closeModal}
-              >
-                Cancel
-              </button>
-              <button className="button primary" type="submit">
-                Create folder
-              </button>
-            </div>
-          </form>
-        </Modal>
+        <CreateFolderModal
+          onClose={closeModal}
+          onCreate={(folderName) => store.createFolder(folderName, folderId)}
+          errorFromStore={store.error}
+        />
       )}
       {modal === "rename" && activeItem && (
         <Modal title={`Rename ${activeItem.kind}`} onClose={closeModal}>
@@ -830,73 +798,6 @@ function SelectControl({
       </select>
       <ChevronDown size={13} />
     </label>
-  );
-}
-function NewMenu({
-  store,
-  folderId,
-  onFolder,
-}: {
-  store: Store;
-  folderId: string | null;
-  onFolder: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const upload = (files: FileList | null) => {
-    Array.from(files ?? []).forEach((file) => store.upload(file, folderId));
-    setOpen(false);
-  };
-  return (
-    <div className="new-menu-wrap">
-      <button
-        className="button primary new-button"
-        onClick={() => setOpen((current) => !current)}
-      >
-        <FolderPlus size={15} />
-        New
-      </button>
-      {open && (
-        <div className="new-menu">
-          <button
-            onClick={() => {
-              onFolder();
-              setOpen(false);
-            }}
-          >
-            New folder
-          </button>
-          <span className="menu-separator" />
-          <label>
-            Upload file
-            <input
-              hidden
-              type="file"
-              multiple
-              onChange={(event) => {
-                upload(event.target.files);
-                event.target.value = "";
-              }}
-            />
-          </label>
-          <label>
-            Upload folder
-            <input
-              hidden
-              type="file"
-              multiple
-              onChange={(event) => {
-                upload(event.target.files);
-                event.target.value = "";
-              }}
-              {...({ webkitdirectory: "", directory: "" } as Record<
-                string,
-                string
-              >)}
-            />
-          </label>
-        </div>
-      )}
-    </div>
   );
 }
 function FolderCard({

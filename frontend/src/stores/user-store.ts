@@ -33,11 +33,32 @@ export function useUserStore() {
     try { const user = await userService.setStatus(id, status); await refresh(); return user; }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to update user status."); throw reason; }
   };
+  const verifyEmail = async (id: string) => {
+    try { const user = await userService.verifyEmail(id); await refresh(); return user; }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to verify email."); throw reason; }
+  };
+  const unverifyEmail = async (id: string) => {
+    try { const user = await userService.unverifyEmail(id); await refresh(); return user; }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to remove verification."); throw reason; }
+  };
+  const setPassword = async (id: string, password: string) => {
+    try { const user = await userService.setPassword(id, password); await refresh(); return user; }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to set password."); throw reason; }
+  };
   const deleteUser = async (id: string) => {
     try { await userService.deleteUser(id); await refresh(); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to delete user."); throw reason; }
   };
   const perform = async (action: () => Promise<void>) => { try { await action(); await refresh(); } catch (reason) { setError(reason instanceof Error ? reason.message : "The request failed."); throw reason; } };
 
-  return { users, currentUser: auth.currentUser, currentUserId: auth.currentUserId, loading, error, refresh, addUser, updateUser, setStatus, deleteUser, resendInvitation: (id: string) => perform(() => userService.resendInvitation(id)), regenerateInvitation: (id: string) => perform(() => userService.regenerateInvitation(id)), resendVerification: (id: string) => perform(() => userService.resendVerification(id)), sendPasswordReset: (id: string) => perform(() => userService.sendPasswordReset(id)) };
+    const batchVerifyEmail = async (ids: string[]) => {
+    try { await Promise.all(ids.map(id => userService.verifyEmail(id))); await refresh(); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to verify selected users."); throw reason; }
+  };
+  const batchSetStatus = async (ids: string[], status: UserStatus) => {
+    try { await Promise.all(ids.map(id => userService.setStatus(id, status))); await refresh(); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to update selected user status."); throw reason; }
+  };
+
+  return { users, currentUser: auth.currentUser, currentUserId: auth.currentUserId, loading, error, refresh, addUser, updateUser, setStatus, verifyEmail, unverifyEmail, setPassword, deleteUser, batchVerifyEmail, batchSetStatus, resendInvitation: (id: string) => perform(() => userService.resendInvitation(id)), regenerateInvitation: (id: string) => perform(() => userService.regenerateInvitation(id)), resendVerification: (id: string) => perform(() => userService.resendVerification(id)), sendPasswordReset: (id: string) => perform(() => userService.sendPasswordReset(id)) };
 }

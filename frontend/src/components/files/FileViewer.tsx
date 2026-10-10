@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- API previews are blob URLs. */
 
 import { useCallback, useEffect, useState } from 'react'
-import { Archive, Download, FileCode2, FileImage, FileText, FolderOpen, Info, Maximize2, Minus, MoreHorizontal, Plus, Share2, Star, Trash2, X } from 'lucide-react'
+import { Archive, Download, FileCode2, FileImage, FileText, FolderOpen, Info, LoaderCircle, Maximize2, Minus, MoreHorizontal, Plus, Share2, Star, Trash2, X } from 'lucide-react'
 import type { CloudItem } from '@/types/cloud'
 import { formatBytes, formatDate } from '@/lib/format'
 import { ApiError } from '@/lib/api/api-error'
@@ -90,7 +90,7 @@ function PreviewResolver({ item, zoom, publicMode, publicToken, publicPassword, 
   }, [item, publicMode, publicPassword, publicToken, onError, supported, textPreviewTooLarge, textPreview])
 
   if (!supported) return <div className="unsupported-viewer"><FileText size={36} aria-hidden="true" /><h2>Preview unavailable</h2><p>This file type cannot be previewed.</p><small>{item.extension ? `.${item.extension}` : 'Unknown file type'} · {formatBytes(item.size)}</small>{onDownload && <button className="viewer-link" onClick={onDownload}>Download file</button>}</div>
-  if (status === 'loading') return <p role="status">Loading preview…</p>
+  if (status === 'loading') return <p className="loading-state" role="status" aria-live="polite"><LoaderCircle className="spin" size={18} aria-hidden="true" /><span>Loading preview…</span></p>
   if (textPreviewTooLarge || status === 'too-large') return <div className="unsupported-viewer"><FileText size={36} aria-hidden="true" /><h2>Preview unavailable</h2><p>This text file is too large to open safely in the browser.</p><small>{item.mimeType} · {formatBytes(item.size)}</small>{onDownload && <button className="viewer-link" onClick={onDownload}>Download file</button>}</div>
   if (textPreview) return <pre className="source-viewer">{text}</pre>
   if (item.fileType === 'image') return <img src={url} alt={item.name} style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', transform: `scale(${zoom / 100})` }} />

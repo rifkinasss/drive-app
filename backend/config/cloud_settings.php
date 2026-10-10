@@ -12,7 +12,7 @@ return [
         'general.brand_name' => ['group' => 'general', 'api' => 'brandName', 'type' => 'string', 'default' => 'NasLabs', 'rules' => ['required', 'string', 'max:120']],
         'general.app_url' => ['group' => 'general', 'api' => 'appUrl', 'type' => 'string', 'default' => config('app.frontend_url'), 'rules' => ['required', 'url', 'max:2048']],
         'general.description' => ['group' => 'general', 'api' => 'description', 'type' => 'string', 'default' => 'Private file storage', 'rules' => ['required', 'string', 'max:500']],
-        'general.language' => ['group' => 'general', 'api' => 'language', 'type' => 'string', 'default' => 'en', 'rules' => ['required', 'in:en,id']],
+        'general.language' => ['group' => 'general', 'api' => 'language', 'type' => 'string', 'default' => 'id', 'rules' => ['required', 'in:en,id']],
         'general.timezone' => ['group' => 'general', 'api' => 'timezone', 'type' => 'string', 'default' => 'UTC', 'rules' => ['required', 'timezone']],
         'general.date_format' => ['group' => 'general', 'api' => 'dateFormat', 'type' => 'string', 'default' => 'Y-m-d', 'rules' => ['required', 'string', 'max:40']],
         'general.time_format' => ['group' => 'general', 'api' => 'timeFormat', 'type' => 'string', 'default' => 'H:i', 'rules' => ['required', 'string', 'max:40']],

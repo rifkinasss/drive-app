@@ -1,7 +1,7 @@
 'use client'
 
 import { use, useEffect, useState } from 'react'
-import { Download, File, FileImage, FileText, Folder, Link2, X } from 'lucide-react'
+import { Download, Eye, EyeOff, File, FileImage, FileText, Folder, Link2, X } from 'lucide-react'
 import { FileViewer } from '@/components/files/FileViewer'
 import type { CloudItem, PublicSharedItem } from '@/types/cloud'
 import { formatBytes, formatDate } from '@/lib/format'
@@ -39,7 +39,30 @@ export default function PublicSharePage({ params }: { params: Promise<{ token: s
 function PublicHeader() { const currentUser = useAuthStore().currentUser; const [copyState, setCopyState] = useState<'idle' | 'success' | 'error'>('idle'); const copy = async () => { try { await navigator.clipboard.writeText(window.location.href); setCopyState('success'); window.setTimeout(() => setCopyState('idle'), 2200) } catch { setCopyState('error'); window.setTimeout(() => setCopyState('idle'), 2200) } }; return <header className="public-header"><div className="public-brand"><span aria-hidden="true"><Link2 size={15} /></span><div><strong>Drive</strong><small>by NasLabs</small></div></div><div className="public-header-actions"><button className="button secondary" type="button" onClick={() => void copy()} aria-live="polite">{copyState === 'success' ? 'Link copied' : copyState === 'error' ? "Couldn't copy link." : 'Copy link'}</button><a className="button secondary" href={currentUser ? '/home' : `/login?returnTo=${encodeURIComponent(typeof window === 'undefined' ? '/home' : window.location.pathname)}`}>Open in Drive</a></div></header> }
 function PublicFooter() { return <footer className="public-footer"><span>Drive by NasLabs</span><span>© 2026 NasLabs</span></footer> }
 function PublicState({ title, description }: { title: string; description: string }) { return <div className="public-page"><PublicHeader /><main className="public-state"><span className="public-state-icon"><Link2 size={20} /></span><h1>{title}</h1><p>{description}</p></main><PublicFooter /></div> }
-function PasswordState({ password, error, onChange, onSubmit }: { password: string; error: string; onChange: (value: string) => void; onSubmit: () => void }) { return <div className="public-page"><PublicHeader /><main className="public-state"><span className="public-state-icon"><Link2 size={20} /></span><h1>Password protected</h1><p>Enter the password provided by the owner to view this shared item.</p><form onSubmit={event => { event.preventDefault(); onSubmit() }}><input className="text-input" type="password" autoFocus value={password} onChange={event => onChange(event.target.value)} aria-label="Share password" />{error && <p className="form-hint error" role="alert">{error}</p>}<button className="button primary" type="submit">Unlock</button></form></main><PublicFooter /></div> }
+function PasswordState({ password, error, onChange, onSubmit }: { password: string; error: string; onChange: (value: string) => void; onSubmit: () => void }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="public-page">
+      <PublicHeader />
+      <main className="public-state">
+        <span className="public-state-icon"><Link2 size={20} /></span>
+        <h1>Tautan Dilindungi Kata Sandi</h1>
+        <p>Masukkan kata sandi yang diberikan pemilik berkas untuk mengakses tautan ini.</p>
+        <form onSubmit={event => { event.preventDefault(); onSubmit(); }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: "320px", margin: "0 auto 12px" }}>
+            <input className="text-input" type={show ? "text" : "password"} autoFocus value={password} onChange={event => onChange(event.target.value)} placeholder="Kata sandi tautan" aria-label="Share password" style={{ width: "100%", paddingRight: "40px" }} />
+            <button type="button" onClick={() => setShow(!show)} aria-label={show ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted, #666)" }}>
+              {show ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          {error && <p className="form-hint error" role="alert" style={{ marginBottom: "12px" }}>{error}</p>}
+          <button className="button primary" type="submit" disabled={!password}>Buka Tautan</button>
+        </form>
+      </main>
+      <PublicFooter />
+    </div>
+  );
+}
 function PublicFileCard({ item, onPreview, onDownload }: { item: PublicSharedItem; onPreview: () => void; onDownload: () => void }) { return <section className="public-file-card"><div className="public-file-preview"><PublicItemIcon item={item} /><span>{item.extension.toUpperCase() || 'FILE'}</span></div><div className="public-file-meta"><p>{item.name}</p><span>{item.mimeType} · {formatBytes(item.size)}</span><span>Modified {formatDate(item.modifiedAt)}</span></div><div className="public-actions"><button className="button secondary" onClick={onPreview}>Preview</button>{item.allowDownload !== false && <button className="button primary" onClick={onDownload}><Download size={15} />Download</button>}</div></section> }
 function PublicPreview({ token, item, password, onClose, onDownload }: { token: string; item: PublicSharedItem; password?: string; onClose: () => void; onDownload: () => void }) { const adapter: CloudItem = { id: item.id ?? '', ownerId: 'public', name: item.name, kind: item.kind, fileType: item.fileType, mimeType: item.mimeType, extension: item.extension, size: item.size, parentId: null, path: '', createdAt: item.modifiedAt, updatedAt: item.modifiedAt, accessedAt: item.modifiedAt, starred: false, deletedAt: null, originalParentId: null, thumbnail: item.thumbnail }; return <div className="public-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}><div className="public-preview-dialog"><button className="public-preview-close" onClick={onClose} aria-label="Close preview"><X size={18} /></button><FileViewer item={adapter} publicMode publicToken={token} publicPassword={password} onClose={onClose} onDownload={onDownload} /></div></div> }
 function PublicItemIcon({ item }: { item: PublicSharedItem }) { if (item.kind === 'folder') return <Folder size={22} />; if (item.fileType === 'image') return <FileImage size={22} />; if (item.fileType === 'document') return <FileText size={22} />; return <File size={22} /> }

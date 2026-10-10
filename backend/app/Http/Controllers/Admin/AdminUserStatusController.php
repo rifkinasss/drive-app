@@ -19,4 +19,14 @@ class AdminUserStatusController
     {
         return ApiResponse::success(new AdminUserResource($users->enable($user)), 'User enabled successfully.');
     }
+
+    public function verify(User $user, AdminUserService $users): JsonResponse
+    {
+        return ApiResponse::success(new AdminUserResource($users->verifyEmail($user)), 'Email verified successfully.');
+    }
+
+    public function unverify(User $user, AdminUserService $users): JsonResponse
+    {
+        return ApiResponse::success(new AdminUserResource($users->unverifyEmail(request()->user(), $user)), 'Email verification removed.');
+    }
 }

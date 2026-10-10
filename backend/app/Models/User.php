@@ -28,12 +28,14 @@ class User extends Authenticatable implements CanResetPassword
         'status',
         'quota_bytes',
         'used_bytes',
+        'last_active_at',
     ];
 
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_active_at' => 'datetime',
             'password' => 'hashed',
             'quota_bytes' => 'integer',
             'used_bytes' => 'integer',

@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 
 class AuthController
 {
@@ -33,6 +34,9 @@ class AuthController
         }
 
         Auth::guard('web')->login($user, $remember);
+        if (Schema::hasColumn('users', 'last_active_at')) {
+            $user->forceFill(['last_active_at' => now()])->save();
+        }
 
         $request->session()->regenerate();
         RateLimiter::clear($this->loginThrottleKey($request));
